@@ -105,12 +105,8 @@ function downloadFile() {
           <label>Judul Pekerjaan</label>
           <input type="text" v-model="formData.judulPekerjaan" required>
         </div>
-        <div>
-          <label>Kategori Aplikasi</label>
-          <input type="text" v-model="formData.kategoriAplikasi">
-        </div>
          <div>
-          <label>Nama Aplikasi Spesifik (Opsional)</label>
+          <label>Nama Aplikasi Spesifik</label>
           <input type="text" v-model="formData.namaAplikasiSpesifik">
         </div>
          <div>
@@ -228,7 +224,7 @@ fieldset {
   border: 1px solid #ddd;
   border-radius: 8px;
   padding: 1.5rem;
-  background-color: #000;
+  background-color: #ffff;
 }
 legend {
   font-weight: bold;
@@ -251,7 +247,7 @@ input, select {
   border-radius: 4px;
 }
 input:read-only {
-  background-color: #e9ecef;
+  background-color: #0000;
   cursor: not-allowed;
 }
 .grid {
