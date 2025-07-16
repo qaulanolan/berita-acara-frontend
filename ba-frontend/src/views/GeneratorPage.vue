@@ -242,9 +242,6 @@ function downloadFile() {
         <button @click="previewFile" class="btn-secondary">
           {{ isPreviewVisible ? '👁️ Sembunyikan Preview' : '👁️ Tampilkan Preview' }}
         </button>
-        <a v-if="newHistoryId" :href="`http://localhost:8080/berita-acara/history/${newHistoryId}/pdf`" download class="btn btn-pdf">
-          Download .pdf
-        </a>
       </div>
 
       <!-- Preview Section -->
