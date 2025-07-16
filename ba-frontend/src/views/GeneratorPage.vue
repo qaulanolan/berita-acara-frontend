@@ -34,11 +34,13 @@ const isLoading = ref(false);
 const fileBlob = ref(null);
 const isPreviewVisible = ref(false);
 const docxContainer = ref(null);
+const newHistoryId = ref(null); // State baru untuk menyimpan ID
 
 async function generateFile() {
   isLoading.value = true;
   isPreviewVisible.value = false;
   fileBlob.value = null;
+  newHistoryId.value = null;
   if (docxContainer.value) {
     docxContainer.value.innerHTML = '';
   }
@@ -48,6 +50,7 @@ async function generateFile() {
       responseType: 'blob'
     });
     fileBlob.value = response.data;
+    newHistoryId.value = response.headers['x-history-id']; // Ambil ID dari header response
   } catch (error) {
     console.error("Gagal men-generate DOCX:", error);
     alert("Terjadi kesalahan. Cek console log untuk detail.");
@@ -239,6 +242,9 @@ function downloadFile() {
         <button @click="previewFile" class="btn-secondary">
           {{ isPreviewVisible ? '👁️ Sembunyikan Preview' : '👁️ Tampilkan Preview' }}
         </button>
+        <a v-if="newHistoryId" :href="`http://localhost:8080/berita-acara/history/${newHistoryId}/pdf`" download class="btn btn-pdf">
+          Download .pdf
+        </a>
       </div>
 
       <!-- Preview Section -->
