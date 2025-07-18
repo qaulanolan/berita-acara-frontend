@@ -126,6 +126,7 @@ async function previewFile() {
   max-width: 1000px;
   margin: 2rem auto;
   padding: 2rem;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 table {
   width: 100%;
