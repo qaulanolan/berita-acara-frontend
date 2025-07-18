@@ -52,8 +52,16 @@ async function generateFile() {
       responseType: 'blob'
     });
     fileBlob.value = response.data;
-    newHistoryId.value = response.headers['x-history-id'];
-    step.value = 4;
+
+    // Convert blob ke base64 dan simpan ke localStorage
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result;
+      localStorage.setItem('generatedDocx', base64);
+      window.location.href = '/preview'; // pindah ke halaman preview
+    };
+    reader.readAsDataURL(response.data);
+
   } catch (error) {
     console.error('Gagal men-generate DOCX:', error);
     alert('Terjadi kesalahan. Cek console log untuk detail.');
@@ -61,6 +69,7 @@ async function generateFile() {
     isLoading.value = false;
   }
 }
+
 
 async function previewFile() {
   isPreviewVisible.value = !isPreviewVisible.value;
