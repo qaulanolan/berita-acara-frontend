@@ -4,6 +4,8 @@ import axios from 'axios';
 import { renderAsync } from 'docx-preview';
 import { QuillEditor } from '@vueup/vue-quill';
 import '@vueup/vue-quill/dist/vue-quill.snow.css';
+import DatePicker from 'vue-datepicker-next';
+import 'vue-datepicker-next/index.css';
 
 // State untuk menampung semua data form
 const formData = ref({
@@ -189,20 +191,33 @@ watch(signatoryCount, (newCount) => {
               <input type="text" v-model="formData.nomorBA" required class="form-input">
             </div>
             <div class="form-group">
-              <label class="form-label">Nomor Surat Request</label>
-              <input type="text" v-model="formData.nomorSuratRequest" class="form-input">
+              <label class="form-label">Tanggal Berita Acara</label>
+              <date-picker 
+                v-model:value="formData.tanggalBA" 
+                format="DD-MM-YYYY" 
+                value-type="format"
+              ></date-picker>
             </div>
             <div class="form-group">
               <label class="form-label">Tanggal Surat Request</label>
-              <input type="date" v-model="formData.tanggalSuratRequest" class="form-input">
+              <date-picker 
+                v-model:value="formData.tanggalSuratRequest" 
+                format="DD-MM-YYYY" 
+                value-type="format"
+              ></date-picker>
             </div>
             <div class="form-group">
-              <label class="form-label">Tanggal Berita Acara</label>
-              <input type="date" v-model="formData.tanggalBA" required class="form-input">
+              <label class="form-label">Nomor Surat Request</label>
+              <input type="text" v-model="formData.nomorSuratRequest" required class="form-input">
             </div>
             <div class="form-group">
               <label class="form-label">Tanggal Pengerjaan/Pengujian</label>
-              <input type="date" v-model="formData.tanggalPengerjaan" required class="form-input">
+              <!-- <input type="date" v-model="formData.tanggalPengerjaan" required class="form-input"> -->
+              <date-picker 
+                v-model:value="formData.tanggalPengerjaan" 
+                format="DD-MM-YYYY" 
+                value-type="format"
+              ></date-picker>
             </div>
             <div v-if="formData.jenisBeritaAcara === 'Deployment'" class="form-group">
               <label class="form-label">Nomor BA UAT</label>
@@ -290,6 +305,14 @@ watch(signatoryCount, (newCount) => {
               </div>
               <div v-for="(p, index) in formData.signatoryList" :key="index" class="signer-row">
                 <input type="text" v-model="p.nama" placeholder="Nama Lengkap" required class="form-input">
+                <!-- <div class="editor-wrapper">
+                  <QuillEditor 
+                    v-model:content="fitur.deskripsi" 
+                    contentType="html" 
+                    theme="snow"
+                    toolbar="essential"
+                  />
+                </div> -->
                 <input type="text" v-model="p.jabatan" placeholder="Jabatan" class="form-input">
                 <input type="text" v-model="p.perusahaan" placeholder="Perusahaan" class="form-input">
                 <input type="text" :value="p.tipe" readonly class="form-input readonly">
