@@ -127,53 +127,40 @@ watch(signatoryCount, (newCount) => {
     </header>
 
     <main class="main-content">
-      <!-- STEP 1: Informasi Umum -->
-      <div v-if="step === 1" class="section-card">
-        <h2 class="section-header">Informasi Umum</h2>
-        <div class="form-group">
-          <label>Jenis Berita Acara</label>
-          <select v-model="formData.jenisBeritaAcara" class="form-select">
-            <option>UAT</option>
-            <option>Deployment</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Tipe Request</label>
-          <select v-model="formData.tipeRequest" class="form-select">
-            <option>Change Request</option>
-            <option>Job Request</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Judul Pekerjaan</label>
-          <input type="text" v-model="formData.judulPekerjaan" class="form-input" />
-        </div>
-        <div class="form-group">
-          <label>Nama Aplikasi Spesifik</label>
-          <input type="text" v-model="formData.namaAplikasiSpesifik" class="form-input" />
-        </div>
-        <div class="form-group">
-          <label>Tahap (Opsional)</label>
-          <input type="text" v-model="formData.tahap" class="form-input" />
-        </div>
-      </div>
-
-      <!-- STEP 2: Nomor & Tanggal + Deskripsi -->
-      <div v-if="step === 2">
+      <form @submit.prevent="generateFile" class="form-container">
+        
+        <!-- Informasi Umum -->
         <div class="section-card">
-          <h2 class="section-header">Nomor & Tanggal</h2>
-          <div class="form-group">
-            <label>Nomor Berita Acara</label>
-            <input type="text" v-model="formData.nomorBA" class="form-input" />
+          <div class="section-header">
+            <h2>Informasi Umum</h2>
           </div>
-          <div class="form-group">
-            <label>Nomor Surat Request</label>
-            <input type="text" v-model="formData.nomorSuratRequest" class="form-input" />
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Jenis Berita Acara</label>
+              <select v-model="formData.jenisBeritaAcara" class="form-select">
+                <option>UAT</option>
+                <option>Deployment</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tipe Request</label>
+              <select v-model="formData.tipeRequest" class="form-select">
+                <option>Change Request</option>
+                <option>Job Request</option>
+              </select>
+            </div>
           </div>
+          
           <div class="form-group">
-            <label>Tanggal Surat Request</label>
-            <input type="date" v-model="formData.tanggalSuratRequest" class="form-input" />
+            <label class="form-label">Judul Pekerjaan</label>
+            <input type="text" v-model="formData.judulPekerjaan" required class="form-input">
           </div>
+          
+          <div class="form-group">
+            <label class="form-label">Nama Aplikasi Spesifik</label>
+            <input type="text" v-model="formData.namaAplikasiSpesifik" required class="form-input">
+          </div>
+          
           <div class="form-group">
             <label class="form-label">Tahap</label>
             <select v-model="formData.tahap" class="form-select">
@@ -185,9 +172,12 @@ watch(signatoryCount, (newCount) => {
             </select>
             <!-- <input type="text" v-model="formData.tahap" placeholder="e.g., tahap I" class="form-input"> -->
           </div>
-          <div class="form-group">
-            <label>Tanggal Pengerjaan/Pengujian</label>
-            <input type="date" v-model="formData.tanggalPengerjaan" class="form-input" />
+        </div>
+
+        <!-- Nomor & Tanggal -->
+        <div class="section-card">
+          <div class="section-header">
+            <h2>Nomor & Tanggal</h2>
           </div>
           <div class="form-grid">
             <div class="form-group">
@@ -230,39 +220,58 @@ watch(signatoryCount, (newCount) => {
           </div>
         </div>
 
+        <!-- Deskripsi Fitur (hanya untuk UAT) -->
         <div v-if="formData.jenisBeritaAcara === 'UAT'" class="section-card">
-          <h2 class="section-header">Deskripsi Fitur</h2>
-          <div v-for="(fitur, index) in formData.fiturList" :key="index">
-            <label>Deskripsi Kegiatan</label>
-            <QuillEditor v-model:content="fitur.deskripsi" contentType="html" theme="snow" />
+          <div class="section-header">
+            <h2>Deskripsi Fitur</h2>
+          </div>
+          <div v-for="(fitur, index) in formData.fiturList" :key="index" class="fitur-card">
             <div class="form-group">
-              <label>Status</label>
-              <select v-model="fitur.status" class="form-select">
-                <option>OK</option>
-                <option>Ditolak</option>
-                <option>Perbaikan</option>
-              </select>
+              <label class="form-label">Deskripsi Kegiatan</label>
+              <div class="editor-wrapper">
+                <QuillEditor 
+                  v-model:content="fitur.deskripsi" 
+                  contentType="html" 
+                  theme="snow"
+                  toolbar="essential"
+                />
+              </div>
             </div>
-            <div class="form-group">
-              <label>Catatan</label>
-              <input type="text" v-model="fitur.catatan" class="form-input" />
+            <div class="fitur-meta">
+              <div class="form-group">
+                <label class="form-label">Status</label>
+                <select v-model="fitur.status" class="form-select">
+                  <option>OK</option>
+                  <option>Ditolak</option>
+                  <option>Perbaikan</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Catatan</label>
+                <input type="text" v-model="fitur.catatan" placeholder="Catatan" class="form-input">
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
         <!-- Daftar Penandatangan -->
         <div v-if="formData.jenisBeritaAcara === 'Deployment'" class="section-card">
           <div class="section-header">
             <h2>Daftar Penandatangan</h2>
           </div>
-
-          <!-- Data -->
-          <div v-for="(p, index) in formData.signatoryList" :key="index" class="signer-grid mb-3">
-            <input type="text" v-model="p.nama" class="form-input" placeholder="Nama Lengkap" />
-            <input type="text" v-model="p.jabatan" class="form-input" placeholder="Jabatan" />
-            <input type="text" v-model="p.perusahaan" class="form-input" placeholder="Perusahaan" />
-            <input type="text" v-model="p.tipe" class="form-input readonly" readonly />
+          <div class="signer-grid">
+            <div class="signer-header">
+              <span>Nama Lengkap</span>
+              <span>Jabatan</span>
+              <span>Perusahaan</span>
+              <span>Tipe</span>
+            </div>
+            <div v-for="(p, index) in formData.signatoryList" :key="index" class="signer-row">
+              <input type="text" v-model="p.nama" placeholder="Nama Lengkap" required class="form-input">
+              <input type="text" v-model="p.jabatan" placeholder="Jabatan" class="form-input">
+              <input type="text" v-model="p.perusahaan" placeholder="Perusahaan" class="form-input">
+              <input type="text" :value="p.tipe" readonly class="form-input readonly">
+            </div>
           </div>
         </div>
 
@@ -275,7 +284,7 @@ watch(signatoryCount, (newCount) => {
             <div class="signer-count-selector">
               <label for="signer-count" class="form-label">Jumlah Penandatangan Utama:</label>
               <select class="form-select" v-model.number="signatoryCount">
-                <option value="2">default</option>
+                <option value="2">2</option>
                 <option value="3">3</option>
                 <option value="4">4</option>
               </select>
@@ -289,18 +298,31 @@ watch(signatoryCount, (newCount) => {
                 <span>Tipe</span>
               </div>
               <div v-for="(p, index) in formData.signatoryList" :key="index" class="signer-row">
-                <input type="text" v-model="p.nama" placeholder="Nama Lengkap" required class="form-input">
-                <!-- <div class="editor-wrapper">
+                <!-- <input type="text" v-model="p.nama" placeholder="Nama Lengkap" required class="form-input"> -->
+                <div class="editor-wrapper">
                   <QuillEditor 
-                    v-model:content="fitur.deskripsi" 
+                    v-model:content="p.nama" 
                     contentType="html" 
-                    theme="snow"
-                    toolbar="essential"
                   />
-                </div> -->
-                <input type="text" v-model="p.jabatan" placeholder="Jabatan" class="form-input">
-                <input type="text" v-model="p.perusahaan" placeholder="Perusahaan" class="form-input">
-                <input type="text" :value="p.tipe" readonly class="form-input readonly">
+                </div>
+                <div class="editor-wrapper">
+                  <QuillEditor 
+                    v-model:content="p.jabatan" 
+                    contentType="html" 
+                  />
+                </div>
+                <div class="form-group">
+                  <select v-model="p.perusahaan" class="form-select">
+                    <option value="PT PLN (Persero)">PT PLN (Persero)</option>
+                    <option value="PT PLN Indonesia Comnets Plus<br>(PLN ICON PLUS)">
+                      PT PLN Indonesia Comnets Plus (PLN ICON PLUS)
+                    </option>
+                  </select>
+                </div>
+
+                <!-- <input type="text" v-model="p.jabatan" placeholder="Jabatan" class="form-input">
+                <input type="text" v-model="p.perusahaan" placeholder="Perusahaan" class="form-input"> -->
+                <input type="text" v-model="p.tipe" readonly class="form-input readonly">
               </div>
             </div>
           <!-- </fieldset> -->
@@ -308,7 +330,7 @@ watch(signatoryCount, (newCount) => {
         
         <!-- Generate Button -->
         <div class="action-section">
-          <button @click="generateFile" :disabled="isLoading" class="btn-primary">
+          <button type="submit" :disabled="isLoading" class="btn-primary">
             <span v-if="isLoading" class="loading-spinner"></span>
             {{ isLoading ? 'Generating...' : 'Generate File' }}
           </button>
@@ -325,26 +347,14 @@ watch(signatoryCount, (newCount) => {
         </button>
       </div>
 
-      <!-- STEP 4: Preview -->
-      <div v-if="step === 4">
-        <div v-if="fileBlob" class="action-buttons">
-          <button @click="downloadFile" class="btn-success">📥 Download .docx</button>
-          <button @click="previewFile" class="btn-secondary">
-            {{ isPreviewVisible ? '👁️ Sembunyikan Preview' : '👁️ Tampilkan Preview' }}
-          </button>
+      <!-- Preview Section -->
+      <div v-if="isPreviewVisible" class="preview-section">
+        <div class="section-header-preview">
+          <h2>👀 Preview Dokumen</h2>
         </div>
-        <div v-if="isPreviewVisible" class="preview-section">
-          <h2 class="section-header-preview">👀 Preview Dokumen</h2>
-          <div class="preview-container">
-            <div ref="docxContainer" class="docx-content"></div>
-          </div>
+        <div class="preview-container">
+          <div ref="docxContainer" class="docx-content"></div>
         </div>
-      </div>
-
-      <!-- Navigasi -->
-      <div class="flex justify-center space-x-4 mt-8">
-        <button @click="prevStep" :disabled="step === 1" class="btn-secondary">← Kembali</button>
-        <button @click="nextStep" :disabled="step === 4" class="btn-success">Lanjut →</button>
       </div>
     </main>
   </div>
@@ -356,13 +366,6 @@ watch(signatoryCount, (newCount) => {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-}
-
-.signer-grid {
-  display: grid;
-  grid-template-columns: 2fr 3fr 2.5fr 1.5fr;
-  gap: 10px;
-  align-items: center;
 }
 
 html, body {
@@ -400,13 +403,18 @@ html, body {
   width: 100%;
 }
 
+.form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
 .section-card {
   background: white;
   border-radius: 15px;
   padding: 25px;
   box-shadow: 0 8px 25px rgba(0,0,0,0.1);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  margin-bottom: 20px;
 }
 
 .section-card:hover {
@@ -418,11 +426,14 @@ html, body {
   margin-bottom: 20px;
   border-bottom: 3px solid #00AEEF;
   padding-bottom: 10px;
-  color: #276184;
-  font-size: 1.4rem;
-  font-weight: 600;
 }
 
+.section-header h2 {
+  color: #276184;
+  font-size: 1.4rem;
+  margin: 0;
+  font-weight: 600;
+}
 .section-header-preview h2 {
   color: white;
   font-size: 1.4rem;
@@ -430,8 +441,22 @@ html, body {
   font-weight: 600;
 }
 
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
 .form-group {
   margin-bottom: 15px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #444;
+  font-size: 0.95rem;
 }
 
 .form-input, .form-select {
@@ -448,6 +473,52 @@ html, body {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-input.readonly {
+  background-color: #f8f9fa;
+  cursor: not-allowed;
+  color: #6c757d;
+}
+
+.fitur-card {
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  padding: 20px;
+  background: #f8f9fa;
+}
+
+.editor-wrapper {
+  margin-bottom: 15px;
+}
+
+.fitur-meta {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 15px;
+  align-items: end;
+}
+
+.signer-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.signer-header {
+  display: grid;
+  grid-template-columns: 2fr 3fr 2fr 1.5fr;
+  gap: 10px;
+  font-weight: 600;
+  color: #495057;
+  padding: 0 5px;
+  margin-bottom: 10px;
+}
+
+.signer-row {
+  display: grid;
+  grid-template-columns: 2fr 3fr 2fr 1.5fr;
+  gap: 10px;
+  align-items: center;
 }
 
 .action-section {
@@ -569,20 +640,41 @@ html, body {
   border-radius: 8px 8px 0 0;
 }
 
+/* Fix Quill Editor Text Color */
 .ql-editor {
   color: #333 !important;
   background-color: #fff !important;
 }
 
-.ql-editor p, .ql-editor strong, .ql-editor * {
+.ql-editor p {
   color: #333 !important;
 }
 
-.ql-indent-0 { padding-left: 0; }
-.ql-indent-1 { padding-left: 2rem; }
-.ql-indent-2 { padding-left: 1rem; }
-.ql-indent-3 { padding-left: 5rem; }
+.ql-editor strong {
+  color: #333 !important;
+}
 
+.ql-editor * {
+  color: #333 !important;
+}
+
+/* .ql-editor ul, ol {
+  padding-left: 10px;
+} */
+.ql-indent-0 {
+  padding-left: 0;
+}
+.ql-indent-1 {
+  padding-left: 2rem;
+}
+.ql-indent-2 {
+  padding-left: 1rem;
+}
+.ql-indent-3 {
+  padding-left: 5rem;
+}
+
+/* Quill Editor Styling Improvements */
 .ql-toolbar.ql-snow {
   border: 2px solid #e1e5e9;
   border-bottom: 1px solid #e1e5e9;
@@ -600,19 +692,54 @@ html, body {
   font-style: italic;
 }
 
+/* Responsive Design */
 @media (max-width: 768px) {
-  .app-container { padding: 15px; }
-  .app-header h1 { font-size: 2rem; }
-  .form-grid { grid-template-columns: 1fr; }
-  .action-buttons { flex-direction: column; align-items: center; }
-  .btn-primary, .btn-success, .btn-secondary {
+  .app-container {
+    padding: 15px;
+  }
+  
+  .app-header h1 {
+    font-size: 2rem;
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .signer-header,
+  .signer-row {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  
+  .signer-header {
+    display: none;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .btn-primary,
+  .btn-success,
+  .btn-secondary {
     width: 100%;
     max-width: 300px;
   }
 }
 
 @media (max-width: 480px) {
-  .app-container { padding: 10px; }
-  .section-card { padding: 20px; }
+  .app-container {
+    padding: 10px;
+  }
+  
+  .section-card {
+    padding: 20px;
+  }
+  
+  .fitur-meta {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
