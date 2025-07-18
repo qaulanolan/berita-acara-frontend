@@ -1,21 +1,20 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, nextTick } from 'vue';
 import axios from 'axios';
 import { renderAsync } from 'docx-preview';
 
 // --- STATE ---
 const historyList = ref([]);
-const isLoading = ref(true); // Untuk loading daftar awal
-const isBlobLoading = ref(false); // Untuk loading saat mengambil file docx
+const isLoading = ref(true);
+const isBlobLoading = ref(false);
 
-const selectedFileBlob = ref(null); // Menyimpan data file .docx yang dipilih
-const selectedNomorBA = ref(''); // Menyimpan nomor BA dari file yang dipilih
-const isPreviewVisible = ref(false); // Mengontrol tampilan preview
-const docxContainer = ref(null); // Ref untuk div preview
+const selectedFileBlob = ref(null);
+const selectedNomorBA = ref('');
+const isPreviewVisible = ref(false);
+const docxContainer = ref(null);
 
 // --- METHODS ---
 
-// Mengambil daftar riwayat saat halaman dimuat
 onMounted(async () => {
   try {
     const response = await axios.get('http://localhost:8080/berita-acara/history');
@@ -28,7 +27,7 @@ onMounted(async () => {
   }
 });
 
-// Mengambil file .docx dari backend dan menyimpannya di state
+// Hanya mengambil file dan menyimpannya di state
 async function loadFile(item) {
   isBlobLoading.value = true;
   isPreviewVisible.value = false;
@@ -40,7 +39,7 @@ async function loadFile(item) {
       responseType: 'blob'
     });
     selectedFileBlob.value = response.data;
-    selectedNomorBA.value = item.nomorBA; // Simpan nomor BA untuk nama file
+    selectedNomorBA.value = item.nomorBA;
   } catch (error) {
     console.error("Gagal memuat file:", error);
     alert("Gagal memuat file dokumen.");
@@ -49,7 +48,7 @@ async function loadFile(item) {
   }
 }
 
-// Mengunduh file yang sudah ada di state `selectedFileBlob`
+// Mengunduh dari state
 function downloadFile() {
   if (!selectedFileBlob.value) return;
   const url = window.URL.createObjectURL(selectedFileBlob.value);
@@ -62,25 +61,14 @@ function downloadFile() {
   window.URL.revokeObjectURL(url);
 }
 
-// Menampilkan preview dari file yang sudah ada di state `selectedFileBlob`
-async function previewFile(historyId) {
-  isPreviewVisible.value = true;
-  if (docxContainer.value) {
-    docxContainer.value.innerHTML = 'Memuat pratinjau...';
-    try {
-      const response = await axios.get(`http://localhost:8080/berita-acara/history/${historyId}/file`, {
-        responseType: 'blob'
-      });
-      
-      // Secara eksplisit buat blob baru dengan tipe yang benar
-      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+// **PERBAIKAN**: Menampilkan preview dari state, tidak perlu ID
+async function previewFile() {
+  isPreviewVisible.value = !isPreviewVisible.value;
 
-      // Render blob yang sudah valid
-      await renderAsync(blob, docxContainer.value);
-
-    } catch (error) {
-      console.error("Gagal memuat preview:", error);
-      docxContainer.value.innerHTML = 'Gagal memuat pratinjau.';
+  if (isPreviewVisible.value && selectedFileBlob.value) {
+    await nextTick();
+    if (docxContainer.value && docxContainer.value.innerHTML === '') {
+      await renderAsync(selectedFileBlob.value, docxContainer.value);
     }
   }
 }
@@ -117,6 +105,7 @@ async function previewFile(historyId) {
     <div v-if="isBlobLoading">
         <p class="loading-text">Memuat file dokumen...</p>
     </div>
+    
     <div v-if="selectedFileBlob" class="action-buttons">
       <button @click="downloadFile" class="btn-download">Download .docx</button>
       <button @click="previewFile" class="btn-preview">
@@ -137,6 +126,7 @@ async function previewFile(historyId) {
   max-width: 1000px;
   margin: 2rem auto;
   padding: 2rem;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 table {
   width: 100%;

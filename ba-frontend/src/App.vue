@@ -25,8 +25,9 @@ nav {
   text-align: center;
   /* margin-top: 2rem; */
   padding: 1rem 0;
-  background-color: #ffffff;
-  border-bottom: 1px solid #d7aeae;
+  background-color: #f4f4f4;
+  border-bottom: 1px solid #ddd;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 nav a.router-link-exact-active {
   color: hsla(160, 100%, 37%, 1);

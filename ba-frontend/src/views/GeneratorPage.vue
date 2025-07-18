@@ -1,9 +1,11 @@
 <script setup>
-import { ref, nextTick } from 'vue';
+import { ref, nextTick, watch } from 'vue';
 import axios from 'axios';
 import { renderAsync } from 'docx-preview';
 import { QuillEditor } from '@vueup/vue-quill';
 import '@vueup/vue-quill/dist/vue-quill.snow.css';
+import DatePicker from 'vue-datepicker-next';
+import 'vue-datepicker-next/index.css';
 
 const step = ref(1);
 const nextStep = () => { if (step.value < 4) step.value++ };
@@ -14,7 +16,7 @@ const formData = ref({
   tipeRequest: 'Change Request',
   namaAplikasiSpesifik: 'APLIKASI PELAYANAN PELANGGAN TERPUSAT (AP2T)',
   judulPekerjaan: 'Change Request Batas Maksimum Token Perdana di AP2T',
-  tahap: 'tahap I',
+  tahap: '',
   nomorBA: '4618.BA/STI.01.03/IC010601/2025',
   nomorSuratRequest: '2357/STI.01.02/F01000402/2025',
   nomorBaUat: '',
@@ -25,9 +27,9 @@ const formData = ref({
     { deskripsi: '<p>Perubahan besaran token perdana untuk <strong>seluruh transaksi</strong> di AP2T.</p>', status: 'OK', catatan: 'Fitur sudah sesuai.' }
   ],
   signatoryList: [
-    { nama: 'Hermawan Asmoko', jabatan: 'VP Aplikasi PLN \u2013 Korporat dan Pelayanan Pelanggan', perusahaan: 'PT Indonesia Comnets Plus', tipe: 'utama1' },
-    { nama: 'Mumahmmad Nurul Hadi', jabatan: 'VP Pengelolaan Data dan Sistem Informasi Pelanggan', perusahaan: 'PT PLN (Persero)', tipe: 'utama2' },
-    { nama: 'Irvan Kristianto', jabatan: 'VP Aplikasi Distribusi dan Pelayanan Pelanggan', perusahaan: 'PT PLN (Persero)', tipe: 'mengetahui' }
+    // { nama: 'Hermawan Asmoko', jabatan: 'VP Aplikasi PLN – Korporat dan Pelayanan Pelanggan', perusahaan: 'PT Indonesia Comnets Plus', tipe: 'utama1' },
+    // { nama: 'Mumahmmad Nurul Hadi', jabatan: 'VP Pengelolaan Data dan Sistem Informasi Pelanggan', perusahaan: 'PT PLN (Persero)', tipe: 'utama2' },
+    // { nama: 'Irvan Kristianto', jabatan: 'VP Aplikasi Distribusi dan Pelayanan Pelanggan', perusahaan: 'PT PLN (Persero)', tipe: 'mengetahui' }
   ]
 });
 
@@ -35,7 +37,8 @@ const isLoading = ref(false);
 const fileBlob = ref(null);
 const isPreviewVisible = ref(false);
 const docxContainer = ref(null);
-const newHistoryId = ref(null);
+const newHistoryId = ref(null); // State baru untuk menyimpan ID
+const signatoryCount= ref(2); // Jumlah penandatangan default
 
 async function generateFile() {
   isLoading.value = true;
@@ -81,6 +84,39 @@ function downloadFile() {
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 }
+
+// 3. Logika 'watch' untuk menyesuaikan signatoryList secara otomatis
+watch(signatoryCount, (newCount) => {
+  const currentSignatories = formData.value.signatoryList;
+  const newSignatories = [];
+  
+  // Isi penandatangan utama
+  for (let i = 0; i < newCount; i++) {
+    // Ambil data lama jika ada, atau buat objek baru
+    const existing = currentSignatories.find(s => s.tipe === `utama${i + 1}`);
+    newSignatories.push(existing || {
+      nama: '',
+      jabatan: '',
+      perusahaan: 'PT PLN (Persero)',
+      tipe: `utama${i + 1}`
+    });
+  }
+
+  if (formData.value.jenisBeritaAcara === 'UAT') {
+    // Tambahkan kembali penandatangan 'mengetahui' jika ada
+    const mengetahui = currentSignatories.find(s => s.tipe === 'mengetahui');
+    newSignatories.push(mengetahui || {
+      nama: '',
+      jabatan: '',
+      perusahaan: 'PT PLN (Persero)',
+      tipe: 'mengetahui'
+    });
+  }
+  
+
+  formData.value.signatoryList = newSignatories;
+}, { immediate: true }); // 'immediate: true' agar dijalankan saat komponen pertama kali dimuat
+
 </script>
 
 
@@ -139,16 +175,58 @@ function downloadFile() {
             <input type="date" v-model="formData.tanggalSuratRequest" class="form-input" />
           </div>
           <div class="form-group">
-            <label>Tanggal Berita Acara</label>
-            <input type="date" v-model="formData.tanggalBA" class="form-input" />
+            <label class="form-label">Tahap</label>
+            <select v-model="formData.tahap" class="form-select">
+                <option value="">Tidak Ada Tahap</option>
+                <option value="Tahap I">Tahap I</option>
+                <option value="Tahap II">Tahap II</option>
+                <option value="Tahap III">Tahap III</option>
+                <option value="Tahap IV">Tahap IV</option>
+            </select>
+            <!-- <input type="text" v-model="formData.tahap" placeholder="e.g., tahap I" class="form-input"> -->
           </div>
           <div class="form-group">
             <label>Tanggal Pengerjaan/Pengujian</label>
             <input type="date" v-model="formData.tanggalPengerjaan" class="form-input" />
           </div>
-          <div v-if="formData.jenisBeritaAcara === 'Deployment'" class="form-group">
-            <label>Nomor BA UAT</label>
-            <input type="text" v-model="formData.nomorBaUat" class="form-input" />
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Nomor Berita Acara</label>
+              <input type="text" v-model="formData.nomorBA" required class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tanggal Berita Acara</label>
+              <date-picker 
+                v-model:value="formData.tanggalBA" 
+                format="DD-MM-YYYY" 
+                value-type="format"
+              ></date-picker>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tanggal Surat Request</label>
+              <date-picker 
+                v-model:value="formData.tanggalSuratRequest" 
+                format="DD-MM-YYYY" 
+                value-type="format"
+              ></date-picker>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nomor Surat Request</label>
+              <input type="text" v-model="formData.nomorSuratRequest" required class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tanggal Pengerjaan/Pengujian</label>
+              <!-- <input type="date" v-model="formData.tanggalPengerjaan" required class="form-input"> -->
+              <date-picker 
+                v-model:value="formData.tanggalPengerjaan" 
+                format="DD-MM-YYYY" 
+                value-type="format"
+              ></date-picker>
+            </div>
+            <div v-if="formData.jenisBeritaAcara === 'Deployment'" class="form-group">
+              <label class="form-label">Nomor BA UAT</label>
+              <input type="text" v-model="formData.nomorBaUat" required class="form-input">
+            </div>
           </div>
         </div>
 
@@ -173,15 +251,10 @@ function downloadFile() {
         </div>
       </div>
 
-      <!-- STEP 3: Penandatangan + Generate -->
-      <div v-if="step === 3">
-        <div class="section-card">
-          <h2 class="section-header">Daftar Penandatangan</h2>
-          <div class="signer-grid font-semibold text-sm mb-2 px-2 hidden md:grid">
-            <span>Nama Lengkap</span>
-            <span>Jabatan</span>
-            <span>Perusahaan</span>
-            <span>Tipe</span>
+        <!-- Daftar Penandatangan -->
+        <div v-if="formData.jenisBeritaAcara === 'Deployment'" class="section-card">
+          <div class="section-header">
+            <h2>Daftar Penandatangan</h2>
           </div>
 
           <!-- Data -->
@@ -192,12 +265,64 @@ function downloadFile() {
             <input type="text" v-model="p.tipe" class="form-input readonly" readonly />
           </div>
         </div>
+
+        <div v-if="formData.jenisBeritaAcara === 'UAT'" class="section-card">
+          <!-- <fieldset> -->
+            <div class="section-header">
+              <h2>Daftar Penandatangan</h2>
+            </div>
+            
+            <div class="signer-count-selector">
+              <label for="signer-count" class="form-label">Jumlah Penandatangan Utama:</label>
+              <select class="form-select" v-model.number="signatoryCount">
+                <option value="2">default</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+              </select>
+            </div>
+  
+            <div class="signer-grid">
+              <div class="signer-header">
+                <span>Nama Lengkap</span>
+                <span>Jabatan</span>
+                <span>Perusahaan</span>
+                <span>Tipe</span>
+              </div>
+              <div v-for="(p, index) in formData.signatoryList" :key="index" class="signer-row">
+                <input type="text" v-model="p.nama" placeholder="Nama Lengkap" required class="form-input">
+                <!-- <div class="editor-wrapper">
+                  <QuillEditor 
+                    v-model:content="fitur.deskripsi" 
+                    contentType="html" 
+                    theme="snow"
+                    toolbar="essential"
+                  />
+                </div> -->
+                <input type="text" v-model="p.jabatan" placeholder="Jabatan" class="form-input">
+                <input type="text" v-model="p.perusahaan" placeholder="Perusahaan" class="form-input">
+                <input type="text" :value="p.tipe" readonly class="form-input readonly">
+              </div>
+            </div>
+          <!-- </fieldset> -->
+        </div>
+        
+        <!-- Generate Button -->
         <div class="action-section">
           <button @click="generateFile" :disabled="isLoading" class="btn-primary">
             <span v-if="isLoading" class="loading-spinner"></span>
             {{ isLoading ? 'Generating...' : 'Generate File' }}
           </button>
         </div>
+      </form>
+      
+      <!-- Action Buttons -->
+      <div v-if="fileBlob" class="action-buttons">
+        <button @click="downloadFile" class="btn-success">
+          📥 Download .docx
+        </button>
+        <button @click="previewFile" class="btn-secondary">
+          {{ isPreviewVisible ? '👁️ Sembunyikan Preview' : '👁️ Tampilkan Preview' }}
+        </button>
       </div>
 
       <!-- STEP 4: Preview -->
