@@ -195,7 +195,7 @@ watch(signatoryCount, (newCount) => {
               <date-picker 
                 v-model:value="formData.tanggalBA" 
                 format="DD-MM-YYYY" 
-                value-type="format"
+                value-type="YYYY-MM-DD"
               ></date-picker>
             </div>
             <div class="form-group">
@@ -203,7 +203,7 @@ watch(signatoryCount, (newCount) => {
               <date-picker 
                 v-model:value="formData.tanggalPengerjaan" 
                 format="DD-MM-YYYY" 
-                value-type="format"
+                value-type="YYYY-MM-DD"
               ></date-picker>
             </div>
             <div class="form-group">
@@ -216,7 +216,7 @@ watch(signatoryCount, (newCount) => {
               <date-picker 
                 v-model:value="formData.tanggalSuratRequest" 
                 format="DD-MM-YYYY" 
-                value-type="format"
+                value-type="YYYY-MM-DD"
               ></date-picker>
             </div>
             <div v-if="formData.jenisBeritaAcara === 'Deployment'" class="form-group">
@@ -287,7 +287,15 @@ watch(signatoryCount, (newCount) => {
                   class="form-input"
                   rows="1"> 
               </textarea>
-              <input type="text" v-model="p.perusahaan" placeholder="Perusahaan" class="form-input">
+              <div class="form-group">
+                <select v-model="p.perusahaan" class="form-select">
+                  <option value="PT PLN (Persero)">PT PLN (Persero)</option>
+                  <option value="PT PLN Indonesia Comnets Plus<br>(PLN ICON PLUS)">
+                    PT PLN Indonesia Comnets Plus (PLN ICON PLUS)
+                  </option>
+                </select>
+              </div>
+              <!-- <input type="text" v-model="p.perusahaan" placeholder="Perusahaan" class="form-input"> -->
               <input type="text" :value="p.tipe" readonly class="form-input readonly">
             </div>
           </div>
@@ -331,7 +339,13 @@ watch(signatoryCount, (newCount) => {
                   class="form-input"
                   rows="1"> 
                 </textarea>
-                <input type="text" v-model="p.perusahaan" placeholder="Perusahaan" class="form-input">
+                <select v-model="p.perusahaan" class="form-select">
+                  <option value="PT PLN (Persero)">PT PLN (Persero)</option>
+                  <option value="PT PLN Indonesia Comnets Plus<br>(PLN ICON PLUS)">
+                    PT PLN Indonesia Comnets Plus (PLN ICON PLUS)
+                  </option>
+                </select>
+                <!-- <input type="text" v-model="p.perusahaan" placeholder="Perusahaan" class="form-input"> -->
                 <input type="text" v-model="p.tipe" readonly class="form-input readonly">
               </div>
             </div>
