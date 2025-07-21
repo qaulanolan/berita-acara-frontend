@@ -41,7 +41,7 @@ const signatoryCount= ref(2); // Jumlah penandatangan default
 
 async function generateFile() {
   isLoading.value = true;
-  isPreviewVisible.value = false;
+  isPreviewVisible.value = false; 
   fileBlob.value = null;
   newHistoryId.value = null;
   if (docxContainer.value) {
@@ -199,9 +199,9 @@ watch(signatoryCount, (newCount) => {
               ></date-picker>
             </div>
             <div class="form-group">
-              <label class="form-label">Tanggal Surat Request</label>
+              <label class="form-label">Tanggal Pengerjaan/Pengujian</label>
               <date-picker 
-                v-model:value="formData.tanggalSuratRequest" 
+                v-model:value="formData.tanggalPengerjaan" 
                 format="DD-MM-YYYY" 
                 value-type="format"
               ></date-picker>
@@ -211,10 +211,10 @@ watch(signatoryCount, (newCount) => {
               <input type="text" v-model="formData.nomorSuratRequest" required class="form-input">
             </div>
             <div class="form-group">
-              <label class="form-label">Tanggal Pengerjaan/Pengujian</label>
+              <label class="form-label">Tanggal Surat Request</label>
               <!-- <input type="date" v-model="formData.tanggalPengerjaan" required class="form-input"> -->
               <date-picker 
-                v-model:value="formData.tanggalPengerjaan" 
+                v-model:value="formData.tanggalSuratRequest" 
                 format="DD-MM-YYYY" 
                 value-type="format"
               ></date-picker>
@@ -273,8 +273,20 @@ watch(signatoryCount, (newCount) => {
               <span>Tipe</span>
             </div>
             <div v-for="(p, index) in formData.signatoryList" :key="index" class="signer-row">
-              <input type="text" v-model="p.nama" placeholder="Nama Lengkap" required class="form-input">
-              <input type="text" v-model="p.jabatan" placeholder="Jabatan" class="form-input">
+              <textarea 
+                  v-model="p.nama" 
+                  placeholder="Nama Lengkap" 
+                  required 
+                  class="form-input"
+                  rows="1"> 
+              </textarea>
+              <textarea 
+                  v-model="p.jabatan" 
+                  placeholder="Jabatan" 
+                  required 
+                  class="form-input"
+                  rows="1"> 
+              </textarea>
               <input type="text" v-model="p.perusahaan" placeholder="Perusahaan" class="form-input">
               <input type="text" :value="p.tipe" readonly class="form-input readonly">
             </div>
@@ -290,7 +302,7 @@ watch(signatoryCount, (newCount) => {
             <div class="signer-count-selector">
               <label for="signer-count" class="form-label">Jumlah Penandatangan Utama:</label>
               <select class="form-select" v-model.number="signatoryCount">
-                <option value="2">default</option>
+                <option value="2">2</option>
                 <option value="3">3</option>
                 <option value="4">4</option>
               </select>
@@ -304,18 +316,23 @@ watch(signatoryCount, (newCount) => {
                 <span>Tipe</span>
               </div>
               <div v-for="(p, index) in formData.signatoryList" :key="index" class="signer-row">
-                <input type="text" v-model="p.nama" placeholder="Nama Lengkap" required class="form-input">
-                <!-- <div class="editor-wrapper">
-                  <QuillEditor 
-                    v-model:content="fitur.deskripsi" 
-                    contentType="html" 
-                    theme="snow"
-                    toolbar="essential"
-                  />
-                </div> -->
-                <input type="text" v-model="p.jabatan" placeholder="Jabatan" class="form-input">
+                <!-- <input type="text" v-model="p.nama" placeholder="Nama Lengkap" required class="form-input"> -->
+                 <textarea 
+                  v-model="p.nama" 
+                  placeholder="Nama Lengkap" 
+                  required 
+                  class="form-input"
+                  rows="1"> 
+                </textarea>
+                <textarea 
+                  v-model="p.jabatan" 
+                  placeholder="Jabatan" 
+                  required 
+                  class="form-input"
+                  rows="1"> 
+                </textarea>
                 <input type="text" v-model="p.perusahaan" placeholder="Perusahaan" class="form-input">
-                <input type="text" :value="p.tipe" readonly class="form-input readonly">
+                <input type="text" v-model="p.tipe" readonly class="form-input readonly">
               </div>
             </div>
           <!-- </fieldset> -->
@@ -734,4 +751,15 @@ html, body {
     grid-template-columns: 1fr;
   }
 }
+
+textarea {
+  width: 100%;
+  padding: 0.6rem;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit; /* Mewarisi font dari elemen lain */
+  resize: vertical; /* Mengizinkan resize vertikal saja */
+}
+
 </style>
