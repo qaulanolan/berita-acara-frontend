@@ -1,13 +1,3 @@
-<template>
-  <div class="preview-wrapper">
-    <h2>📄 Preview Dokumen Berita Acara</h2>
-
-    <button @click="downloadFile" class="btn-download">📥 Download .docx</button>
-
-    <div ref="docxContainer" class="docx-content"></div>
-  </div>
-</template>
-
 <script setup>
 import { onMounted, ref } from 'vue';
 import { renderAsync } from 'docx-preview';
@@ -34,14 +24,27 @@ onMounted(async () => {
 
 function downloadFile() {
   if (!blobFile.value) return;
+  const nomorBA = localStorage.getItem('generatedDocxNomorBA') || 'BeritaAcara';
   const url = URL.createObjectURL(blobFile.value);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'BeritaAcara.docx';
+  a.download = `BA-${nomorBA}.docx`;
   a.click();
   URL.revokeObjectURL(url);
 }
 </script>
+
+
+<template>
+  <div class="preview-wrapper">
+    <h2>📄 Preview Dokumen Berita Acara</h2>
+
+    <button @click="downloadFile" class="btn-download">📥 Download .docx</button>
+
+    <div ref="docxContainer" class="docx-content"></div>
+  </div>
+</template>
+
 
 <style scoped>
 .preview-wrapper {

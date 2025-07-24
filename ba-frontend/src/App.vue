@@ -8,22 +8,27 @@ import { RouterLink, RouterView } from 'vue-router'
       <nav>
         <RouterLink to="/">Generator</RouterLink>
         <RouterLink to="/history">Riwayat</RouterLink>
+        <RouterLink to="/preview">Preview</RouterLink>
       </nav>
     </div>
   </header>
-  <RouterView />
+  <RouterView v-slot="{ Component }">
+    <KeepAlive>
+      <component :is="Component" />
+    </KeepAlive>
+  </RouterView>
 </template>
 
 <style scoped>
 header {
   line-height: 1.5;
   max-height: 100vh;
+  position: sticky;
 }
 nav {
   width: 100%;
   font-size: 1rem;
   text-align: center;
-  /* margin-top: 2rem; */
   padding: 1rem 0;
   background-color: #f4f4f4;
   border-bottom: 1px solid #ddd;
@@ -31,6 +36,7 @@ nav {
 }
 nav a.router-link-exact-active {
   color: hsla(160, 100%, 37%, 1);
+  text-decoration: none;
 }
 nav a {
   display: inline-block;

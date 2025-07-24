@@ -12,7 +12,7 @@ const selectedFileBlob = ref(null);
 const selectedNomorBA = ref('');
 const isPreviewVisible = ref(false);
 const docxContainer = ref(null);
-
+const selectedHistoryId = ref(null);
 // --- METHODS ---
 
 onMounted(async () => {
@@ -32,6 +32,7 @@ async function loadFile(item) {
   isBlobLoading.value = true;
   isPreviewVisible.value = false;
   selectedFileBlob.value = null;
+  selectedHistoryId.value = item.id;
   if (docxContainer.value) docxContainer.value.innerHTML = '';
   
   try {
@@ -90,7 +91,13 @@ async function previewFile() {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="item in historyList" :key="item.id" @click="loadFile(item)" class="history-row">
+        <tr   
+          v-for="item in historyList" 
+          :key="item.id" 
+          @click="loadFile(item)" 
+          class="history-row"
+          :class="{ 'selected-row': item.id === selectedHistoryId }"
+        >
           <td>{{ item.nomorBA }}</td>
           <td>{{ item.jenisBeritaAcara }}</td>
           <td>{{ item.judulPekerjaan }}</td>
@@ -190,6 +197,9 @@ th {
 }
 .history-row:hover {
   background-color: #f0f8ff;
+}
+.selected-row {
+  background-color: #d4edda !important; 
 }
 .action-buttons {
   margin-top: 1.5rem;
