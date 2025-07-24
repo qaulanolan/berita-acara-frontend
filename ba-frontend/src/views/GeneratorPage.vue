@@ -53,7 +53,17 @@ async function generateFile() {
       responseType: 'blob'
     });
     fileBlob.value = response.data;
-    newHistoryId.value = response.headers['x-history-id']; // Ambil ID dari header response
+    // newHistoryId.value = response.headers['x-history-id']; // Ambil ID dari header response
+    // Convert blob ke base64 dan simpan ke localStorage
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result;
+      localStorage.setItem('generatedDocx', base64);
+      localStorage.setItem('generatedDocxNomorBA', formData.value.nomorBA);
+      window.location.href = '/preview'; // pindah ke halaman preview
+    };
+    reader.readAsDataURL(response.data);
+
   } catch (error) {
     console.error("Gagal men-generate DOCX:", error);
     alert("Terjadi kesalahan. Cek console log untuk detail.");
@@ -92,25 +102,23 @@ function downloadFile() {
     window.URL.revokeObjectURL(url);
 }
 
-// 3. Logika 'watch' untuk menyesuaikan signatoryList secara otomatis
-watch(signatoryCount, (newCount) => {
+function updateSignatoryList() {
   const currentSignatories = formData.value.signatoryList;
   const newSignatories = [];
   
-  // Isi penandatangan utama
-  for (let i = 0; i < newCount; i++) {
-    // Ambil data lama jika ada, atau buat objek baru
-    const existing = currentSignatories.find(s => s.tipe === `utama${i + 1}`);
+  // Isi penandatangan utama berdasarkan jumlah yang dipilih
+  for (let i = 0; i < signatoryCount.value; i++) {
+    const existing = currentSignatories.find(s => s.tipe === `penandatangan${i + 1}`);
     newSignatories.push(existing || {
       nama: '',
       jabatan: '',
-      perusahaan: 'PT PLN (Persero)',
-      tipe: `utama${i + 1}`
+      perusahaan: 'PT PLN Indonesia Comnets Plus<br>(PLN ICON PLUS)',
+      tipe: `penandatangan${i + 1}`
     });
   }
 
+  // HANYA tambahkan penandatangan 'mengetahui' jika jenisnya UAT
   if (formData.value.jenisBeritaAcara === 'UAT') {
-    // Tambahkan kembali penandatangan 'mengetahui' jika ada
     const mengetahui = currentSignatories.find(s => s.tipe === 'mengetahui');
     newSignatories.push(mengetahui || {
       nama: '',
@@ -119,10 +127,15 @@ watch(signatoryCount, (newCount) => {
       tipe: 'mengetahui'
     });
   }
-  
 
   formData.value.signatoryList = newSignatories;
-}, { immediate: true }); // 'immediate: true' agar dijalankan saat komponen pertama kali dimuat
+}
+
+// Pantau perubahan pada jumlah penandatangan
+watch(signatoryCount, updateSignatoryList);
+
+// Pantau perubahan pada jenis Berita Acara
+watch(() => formData.value.jenisBeritaAcara, updateSignatoryList, { immediate: true });
 
 </script>
 
@@ -199,7 +212,7 @@ watch(signatoryCount, (newCount) => {
               ></date-picker>
             </div>
             <div class="form-group">
-              <label class="form-label">Tanggal Pengerjaan/Pengujian</label>
+              <label class="form-label">Tanggal Pengujian</label>
               <date-picker 
                 v-model:value="formData.tanggalPengerjaan" 
                 format="DD-MM-YYYY" 
@@ -270,7 +283,7 @@ watch(signatoryCount, (newCount) => {
               <span>Nama Lengkap</span>
               <span>Jabatan</span>
               <span>Perusahaan</span>
-              <span>Tipe</span>
+              <span>Penandatangan</span>
             </div>
             <div v-for="(p, index) in formData.signatoryList" :key="index" class="signer-row">
               <textarea 
@@ -287,14 +300,12 @@ watch(signatoryCount, (newCount) => {
                   class="form-input"
                   rows="1"> 
               </textarea>
-              <div class="form-group">
-                <select v-model="p.perusahaan" class="form-select">
-                  <option value="PT PLN (Persero)">PT PLN (Persero)</option>
-                  <option value="PT PLN Indonesia Comnets Plus<br>(PLN ICON PLUS)">
-                    PT PLN Indonesia Comnets Plus (PLN ICON PLUS)
-                  </option>
-                </select>
-              </div>
+              <select v-model="p.perusahaan" class="form-select">
+                <option value="PT PLN (Persero)">PT PLN (Persero)</option>
+                <option value="PT PLN Indonesia Comnets Plus<br>(PLN ICON PLUS)">
+                  PT PLN Indonesia Comnets Plus (PLN ICON PLUS)
+                </option>
+              </select>
               <!-- <input type="text" v-model="p.perusahaan" placeholder="Perusahaan" class="form-input"> -->
               <input type="text" :value="p.tipe" readonly class="form-input readonly">
             </div>
@@ -308,7 +319,8 @@ watch(signatoryCount, (newCount) => {
             </div>
             
             <div class="signer-count-selector">
-              <label for="signer-count" class="form-label">Jumlah Penandatangan Utama:</label>
+              <label for="signer-count" class="form-label">Jumlah Penandatangan :</label>
+              <p>*selain mengetahui</p>
               <select class="form-select" v-model.number="signatoryCount">
                 <option value="2">2</option>
                 <option value="3">3</option>
@@ -321,21 +333,21 @@ watch(signatoryCount, (newCount) => {
                 <span>Nama Lengkap</span>
                 <span>Jabatan</span>
                 <span>Perusahaan</span>
-                <span>Tipe</span>
+                <span>Penandatangan</span>
               </div>
               <div v-for="(p, index) in formData.signatoryList" :key="index" class="signer-row">
                 <!-- <input type="text" v-model="p.nama" placeholder="Nama Lengkap" required class="form-input"> -->
                  <textarea 
                   v-model="p.nama" 
                   placeholder="Nama Lengkap" 
-                  required 
+                  required
                   class="form-input"
                   rows="1"> 
                 </textarea>
                 <textarea 
                   v-model="p.jabatan" 
                   placeholder="Jabatan" 
-                  required 
+                  required
                   class="form-input"
                   rows="1"> 
                 </textarea>
@@ -513,6 +525,7 @@ html, body {
 
 .editor-wrapper {
   margin-bottom: 15px;
+  background-color: #ffff;
 }
 
 .fitur-meta {

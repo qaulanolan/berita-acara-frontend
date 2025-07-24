@@ -8,6 +8,7 @@ import { RouterLink, RouterView } from 'vue-router'
       <nav>
         <RouterLink to="/">Generator</RouterLink>
         <RouterLink to="/history">Riwayat</RouterLink>
+        <RouterLink to="/preview">Preview</RouterLink>
       </nav>
     </div>
   </header>
@@ -35,6 +36,7 @@ nav {
 }
 nav a.router-link-exact-active {
   color: hsla(160, 100%, 37%, 1);
+  text-decoration: none;
 }
 nav a {
   display: inline-block;
