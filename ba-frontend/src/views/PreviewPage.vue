@@ -24,11 +24,13 @@ onMounted(async () => {
 
 function downloadFile() {
   if (!blobFile.value) return;
-  const nomorBA = localStorage.getItem('generatedDocxNomorBA') || 'BeritaAcara';
+  // const nomorBA = localStorage.getItem('generatedDocxNomorBA') || 'BeritaAcara';
+  const jenisBA = localStorage.getItem('generatedDocxJenisBA') || 'BeritaAcara';
+  const judulBA = localStorage.getItem('generatedDocxJudulBA') || 'BeritaAcara';
   const url = URL.createObjectURL(blobFile.value);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `BA-${nomorBA}.docx`;
+  a.download = `BA ${jenisBA} ${judulBA}.docx`;
   a.click();
   URL.revokeObjectURL(url);
 }

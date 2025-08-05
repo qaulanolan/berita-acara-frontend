@@ -1,6 +1,6 @@
 <script setup>
 import { ref, nextTick, watch } from 'vue';
-import axios from 'axios';
+import apiClient from '@/services/api';
 import { renderAsync } from 'docx-preview';
 import { QuillEditor } from '@vueup/vue-quill';
 import '@vueup/vue-quill/dist/vue-quill.snow.css';
@@ -48,17 +48,18 @@ async function generateFile() {
   if (docxContainer.value) docxContainer.value.innerHTML = '';
 
   try {
-    const response = await axios.post('http://localhost:8080/berita-acara/generate-docx', formData.value, {
+    const response = await apiClient.post('http://localhost:8080/berita-acara/generate-docx', formData.value, {
       responseType: 'blob'
     });
     fileBlob.value = response.data;
-    // newHistoryId.value = response.headers['x-history-id']; // Ambil ID dari header response
     // Convert blob ke base64 dan simpan ke localStorage
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64 = reader.result;
       localStorage.setItem('generatedDocx', base64);
-      localStorage.setItem('generatedDocxNomorBA', formData.value.nomorBA);
+      // localStorage.setItem('generatedDocxNomorBA', formData.value.nomorBA);
+      localStorage.setItem('generatedDocxJenisBA', formData.value.jenisBeritaAcara);
+      localStorage.setItem('generatedDocxJudulBA', formData.value.judulPekerjaan);
       window.location.href = '/preview'; // pindah ke halaman preview
     };
     reader.readAsDataURL(response.data);
@@ -253,11 +254,12 @@ watch(() => formData.value.jenisBeritaAcara, updateSignatoryList, { immediate: t
             <div class="fitur-meta">
               <div class="form-group">
                 <label class="form-label">Status</label>
-                <select v-model="fitur.status" class="form-select">
+                <input type="text" v-model="fitur.status" placeholder="Status" class="form-input readonly"></input>
+                <!-- <select v-model="fitur.status" class="form-select readonly">
                   <option>OK</option>
                   <option>Ditolak</option>
                   <option>Perbaikan</option>
-                </select>
+                </select> -->
               </div>
               <div class="form-group">
                 <label class="form-label">Catatan</label>
@@ -368,24 +370,24 @@ watch(() => formData.value.jenisBeritaAcara, updateSignatoryList, { immediate: t
       </form>
       
       <!-- Action Buttons -->
-      <div v-if="fileBlob" class="action-buttons">
+      <!-- <div v-if="fileBlob" class="action-buttons">
         <button @click="downloadFile" class="btn-success">
           📥 Download .docx
         </button>
         <button @click="previewFile" class="btn-secondary">
           {{ isPreviewVisible ? '👁️ Sembunyikan Preview' : '👁️ Tampilkan Preview' }}
         </button>
-      </div>
+      </div> -->
 
       <!-- Preview Section -->
-      <div v-if="isPreviewVisible" class="preview-section">
+      <!-- <div v-if="isPreviewVisible" class="preview-section">
         <div class="section-header-preview">
-          <h2>👀 Preview Dokumen</h2>
+          <h2>Preview Dokumen</h2>
         </div>
         <div class="preview-container">
           <div ref="docxContainer" class="docx-content"></div>
         </div>
-      </div>
+      </div> -->
     </main>
   </div>
 </template>
@@ -408,7 +410,7 @@ html, body {
 .app-container {
   min-height: 100vh;
   width: 100%;
-  background: linear-gradient(#276184 100%);
+  background: #276184;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   padding: 20px;
   position: relative;

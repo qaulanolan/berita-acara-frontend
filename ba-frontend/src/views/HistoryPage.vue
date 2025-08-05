@@ -1,6 +1,13 @@
+<script>
+// Gunakan <script> biasa, bukan <script setup> untuk mendefinisikan nama
+export default {
+  name: 'HistoryPage'
+}
+</script>
+
 <script setup>
 import { ref, onMounted, nextTick } from 'vue';
-import axios from 'axios';
+import apiClient from '@/services/api';
 import { renderAsync } from 'docx-preview';
 
 // --- STATE ---
@@ -17,7 +24,7 @@ const selectedHistoryId = ref(null);
 
 onMounted(async () => {
   try {
-    const response = await axios.get('http://localhost:8080/berita-acara/history');
+    const response = await apiClient.get('http://localhost:8080/berita-acara/history');
     historyList.value = response.data;
   } catch (error) {
     console.error("Gagal mengambil histori:", error);
@@ -36,7 +43,7 @@ async function loadFile(item) {
   if (docxContainer.value) docxContainer.value.innerHTML = '';
   
   try {
-    const response = await axios.get(`http://localhost:8080/berita-acara/history/${item.id}/file`, {
+    const response = await apiClient.get(`http://localhost:8080/berita-acara/history/${item.id}/file`, {
       responseType: 'blob'
     });
     selectedFileBlob.value = response.data;
