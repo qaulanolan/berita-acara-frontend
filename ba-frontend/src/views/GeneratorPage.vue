@@ -7,7 +7,10 @@ import '@vueup/vue-quill/dist/vue-quill.snow.css';
 import DatePicker from 'vue-datepicker-next';
 import 'vue-datepicker-next/index.css';
 
-// State untuk menampung semua data form
+const step = ref(1);
+const nextStep = () => { if (step.value < 4) step.value++ };
+const prevStep = () => { if (step.value > 1) step.value-- };
+
 const formData = ref({
   jenisBeritaAcara: 'UAT',
   tipeRequest: 'Change Request',
@@ -20,11 +23,9 @@ const formData = ref({
   tanggalBA: '2024-12-30',
   tanggalSuratRequest: '2025-01-14',
   tanggalPengerjaan: '2024-12-28',
-  // Diisi dengan 1 objek fitur saja
   fiturList: [
     { deskripsi: '<p>Perubahan besaran token perdana untuk <strong>seluruh transaksi</strong> di AP2T.</p>', status: 'OK', catatan: 'Fitur sudah sesuai.' }
   ],
-  // Diisi dengan 3 objek penandatangan sesuai placeholder
   signatoryList: [
     // { nama: 'Hermawan Asmoko', jabatan: 'VP Aplikasi PLN – Korporat dan Pelayanan Pelanggan', perusahaan: 'PT Indonesia Comnets Plus', tipe: 'utama1' },
     // { nama: 'Mumahmmad Nurul Hadi', jabatan: 'VP Pengelolaan Data dan Sistem Informasi Pelanggan', perusahaan: 'PT PLN (Persero)', tipe: 'utama2' },
@@ -44,9 +45,7 @@ async function generateFile() {
   isPreviewVisible.value = false; 
   fileBlob.value = null;
   newHistoryId.value = null;
-  if (docxContainer.value) {
-    docxContainer.value.innerHTML = '';
-  }
+  if (docxContainer.value) docxContainer.value.innerHTML = '';
 
   try {
     const response = await apiClient.post('http://localhost:8080/berita-acara/generate-docx', formData.value, {
@@ -66,41 +65,35 @@ async function generateFile() {
     reader.readAsDataURL(response.data);
 
   } catch (error) {
-    console.error("Gagal men-generate DOCX:", error);
-    alert("Terjadi kesalahan. Cek console log untuk detail.");
+    console.error('Gagal men-generate DOCX:', error);
+    alert('Terjadi kesalahan. Cek console log untuk detail.');
   } finally {
     isLoading.value = false;
   }
 }
 
+
 async function previewFile() {
   isPreviewVisible.value = !isPreviewVisible.value;
-
-  // Hanya proses jika preview akan ditampilkan dan ada file blob
   if (isPreviewVisible.value && fileBlob.value) {
-    // Tunggu hingga Vue selesai memperbarui DOM dan div muncul
     await nextTick();
-    
-    // Sekarang docxContainer.value dijamin sudah ada di halaman
     if (docxContainer.value) {
-      // Kosongkan dulu untuk memastikan tidak ada sisa render lama
       docxContainer.value.innerHTML = '';
-      // Render dokumen ke dalam container
       await renderAsync(fileBlob.value, docxContainer.value);
     }
   }
 }
 
 function downloadFile() {
-    if (!fileBlob.value) return;
-    const url = window.URL.createObjectURL(fileBlob.value);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `BA-${formData.value.judulPekerjaan}.docx`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+  if (!fileBlob.value) return;
+  const url = window.URL.createObjectURL(fileBlob.value);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `BA-${formData.value.judulPekerjaan}.docx`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
 }
 
 function updateSignatoryList() {
@@ -139,6 +132,7 @@ watch(signatoryCount, updateSignatoryList);
 watch(() => formData.value.jenisBeritaAcara, updateSignatoryList, { immediate: true });
 
 </script>
+
 
 <template>
   <div class="app-container">
@@ -397,6 +391,7 @@ watch(() => formData.value.jenisBeritaAcara, updateSignatoryList, { immediate: t
     </main>
   </div>
 </template>
+
 
 <style scoped>
 * {
