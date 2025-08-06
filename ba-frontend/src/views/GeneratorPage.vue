@@ -27,9 +27,6 @@ const formData = ref({
     { deskripsi: '<p>Perubahan besaran token perdana untuk <strong>seluruh transaksi</strong> di AP2T.</p>', status: 'OK', catatan: 'Fitur sudah sesuai.' }
   ],
   signatoryList: [
-    // { nama: 'Hermawan Asmoko', jabatan: 'VP Aplikasi PLN – Korporat dan Pelayanan Pelanggan', perusahaan: 'PT Indonesia Comnets Plus', tipe: 'utama1' },
-    // { nama: 'Mumahmmad Nurul Hadi', jabatan: 'VP Pengelolaan Data dan Sistem Informasi Pelanggan', perusahaan: 'PT PLN (Persero)', tipe: 'utama2' },
-    // { nama: 'Irvan Kristianto', jabatan: 'VP Aplikasi Distribusi dan Pelayanan Pelanggan', perusahaan: 'PT PLN (Persero)', tipe: 'mengetahui' }
   ]
 });
 
@@ -37,9 +34,8 @@ const isLoading = ref(false);
 const fileBlob = ref(null);
 const isPreviewVisible = ref(false);
 const docxContainer = ref(null);
-const newHistoryId = ref(null); // State baru untuk menyimpan ID
-const signatoryCount= ref(2); // Jumlah penandatangan default
-
+const newHistoryId = ref(null); 
+const signatoryCount= ref(2); 
 async function generateFile() {
   isLoading.value = true;
   isPreviewVisible.value = false; 
@@ -52,12 +48,10 @@ async function generateFile() {
       responseType: 'blob'
     });
     fileBlob.value = response.data;
-    // Convert blob ke base64 dan simpan ke localStorage
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64 = reader.result;
       localStorage.setItem('generatedDocx', base64);
-      // localStorage.setItem('generatedDocxNomorBA', formData.value.nomorBA);
       localStorage.setItem('generatedDocxJenisBA', formData.value.jenisBeritaAcara);
       localStorage.setItem('generatedDocxJudulBA', formData.value.judulPekerjaan);
       window.location.href = '/preview'; // pindah ke halaman preview
@@ -111,7 +105,6 @@ function updateSignatoryList() {
     });
   }
 
-  // HANYA tambahkan penandatangan 'mengetahui' jika jenisnya UAT
   if (formData.value.jenisBeritaAcara === 'UAT') {
     const mengetahui = currentSignatories.find(s => s.tipe === 'mengetahui');
     newSignatories.push(mengetahui || {
@@ -125,10 +118,8 @@ function updateSignatoryList() {
   formData.value.signatoryList = newSignatories;
 }
 
-// Pantau perubahan pada jumlah penandatangan
 watch(signatoryCount, updateSignatoryList);
 
-// Pantau perubahan pada jenis Berita Acara
 watch(() => formData.value.jenisBeritaAcara, updateSignatoryList, { immediate: true });
 
 </script>
@@ -184,11 +175,9 @@ watch(() => formData.value.jenisBeritaAcara, updateSignatoryList, { immediate: t
                 <option value="Tahap III">Tahap III</option>
                 <option value="Tahap IV">Tahap IV</option>
             </select>
-            <!-- <input type="text" v-model="formData.tahap" placeholder="e.g., tahap I" class="form-input"> -->
           </div>
         </div>
 
-        <!-- Nomor & Tanggal -->
         <div class="section-card">
           <div class="section-header">
             <h2>Nomor & Tanggal</h2>
@@ -220,7 +209,6 @@ watch(() => formData.value.jenisBeritaAcara, updateSignatoryList, { immediate: t
             </div>
             <div class="form-group">
               <label class="form-label">Tanggal Surat Request</label>
-              <!-- <input type="date" v-model="formData.tanggalPengerjaan" required class="form-input"> -->
               <date-picker 
                 v-model:value="formData.tanggalSuratRequest" 
                 format="DD-MM-YYYY" 
@@ -234,7 +222,6 @@ watch(() => formData.value.jenisBeritaAcara, updateSignatoryList, { immediate: t
           </div>
         </div>
 
-        <!-- Deskripsi Fitur (hanya untuk UAT) -->
         <div v-if="formData.jenisBeritaAcara === 'UAT'" class="section-card">
           <div class="section-header">
             <h2>Deskripsi Fitur</h2>
@@ -255,11 +242,6 @@ watch(() => formData.value.jenisBeritaAcara, updateSignatoryList, { immediate: t
               <div class="form-group">
                 <label class="form-label">Status</label>
                 <input type="text" v-model="fitur.status" placeholder="Status" class="form-input readonly"></input>
-                <!-- <select v-model="fitur.status" class="form-select readonly">
-                  <option>OK</option>
-                  <option>Ditolak</option>
-                  <option>Perbaikan</option>
-                </select> -->
               </div>
               <div class="form-group">
                 <label class="form-label">Catatan</label>
@@ -269,7 +251,6 @@ watch(() => formData.value.jenisBeritaAcara, updateSignatoryList, { immediate: t
           </div>
         </div>
 
-        <!-- Daftar Penandatangan -->
         <div v-if="formData.jenisBeritaAcara === 'Deployment'" class="section-card">
           <div class="section-header">
             <h2>Daftar Penandatangan</h2>
@@ -332,7 +313,6 @@ watch(() => formData.value.jenisBeritaAcara, updateSignatoryList, { immediate: t
                 <span>Penandatangan</span>
               </div>
               <div v-for="(p, index) in formData.signatoryList" :key="index" class="signer-row">
-                <!-- <input type="text" v-model="p.nama" placeholder="Nama Lengkap" required class="form-input"> -->
                  <textarea 
                   v-model="p.nama" 
                   placeholder="Nama Lengkap" 
@@ -360,7 +340,6 @@ watch(() => formData.value.jenisBeritaAcara, updateSignatoryList, { immediate: t
           <!-- </fieldset> -->
         </div>
         
-        <!-- Generate Button -->
         <div class="action-section">
           <button type="submit" :disabled="isLoading" class="btn-primary">
             <span v-if="isLoading" class="loading-spinner"></span>
@@ -782,8 +761,8 @@ textarea {
   box-sizing: border-box;
   border: 1px solid #ccc;
   border-radius: 4px;
-  font-family: inherit; /* Mewarisi font dari elemen lain */
-  resize: vertical; /* Mengizinkan resize vertikal saja */
+  font-family: inherit; 
+  resize: vertical; 
 }
 
 </style>
