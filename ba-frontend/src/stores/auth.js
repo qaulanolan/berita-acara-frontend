@@ -1,65 +1,149 @@
+// import { defineStore } from 'pinia';
+// import api from '@/services/api'; // Pastikan path ini benar
+// import { ref, computed } from 'vue';
+// import { useRouter } from 'vue-router';
+
+// export const useAuthStore = defineStore('auth', () => {
+//   // --- STATE ---
+//   const token = ref(localStorage.getItem('token') || null);
+  
+//   // --- PERUBAHAN: Inisialisasi user dari localStorage ---
+//   // Ini penting agar role tetap ada setelah refresh halaman
+//   const user = ref(JSON.parse(localStorage.getItem('user')) || { username: null, role: null });
+  
+//   const isLoading = ref(false);
+//   const router = useRouter();
+
+//   // --- GETTERS ---
+//   const isLoggedIn = computed(() => !!token.value);
+  
+//   // --- GETTER BARU: Untuk memeriksa apakah pengguna adalah admin ---
+//   const isAdmin = computed(() => user.value?.role === 'ADMIN');
+
+//   // --- ACTIONS ---
+//   async function fetchUser() {
+//     if (token.value) {
+//       try {
+//         const response = await api.getMe('/auth/me'); // Gunakan api yang sudah di-setup
+//         user.value = response.data; // Responsnya akan berupa { username: '...', role: '...' }
+        
+//         // --- PERUBAHAN: Simpan data user ke localStorage ---
+//         localStorage.setItem('user', JSON.stringify(user.value));
+        
+//       } catch (error) {
+//         console.error("Gagal mengambil data user (token mungkin tidak valid):", error);
+//         // Jika gagal (misal token kedaluwarsa), lakukan logout
+//         logout();
+//       }
+//     }
+//   }
+
+//   async function login(username, password) {
+//     isLoading.value = true;
+//     try {
+//       const response = await api.post('/auth/login', { username, password });
+      
+//       // --- PERUBAHAN: Ambil token dari objek JSON ---
+//       // Backend sekarang mengembalikan { "token": "..." }
+//       const receivedToken = response.data.token;
+//       token.value = receivedToken;
+//       localStorage.setItem('token', receivedToken);
+
+//       // Panggil fetchUser untuk mendapatkan detail user (termasuk role)
+//       await fetchUser(); 
+
+//     } catch (error) {
+//       logout(); // Bersihkan state jika login gagal
+//       throw error; // Lempar error agar bisa ditangani di komponen
+//     } finally {
+//       isLoading.value = false;
+//     }
+//   }
+
+//   function logout() {
+//     token.value = null;
+    
+//     // --- PERUBAHAN: Reset user state ke nilai awal ---
+//     user.value = { username: null, role: null };
+    
+//     localStorage.removeItem('token');
+    
+//     // --- PERUBAHAN: Hapus juga data user dari localStorage ---
+//     localStorage.removeItem('user');
+    
+//     router.push('/login');
+//   }
+
+//   async function register(username, password) {
+//     isLoading.value = true;
+//     try {
+//       const response = await api.post('/auth/register', { username, password });
+//       return response.data.message;
+//     } catch (error) {
+//       // Penanganan error sudah cukup baik
+//       if (error.response && error.response.data && error.response.data.error) {
+//         throw new Error(error.response.data.error);
+//       }
+//       throw new Error('Terjadi kesalahan saat registrasi.');
+//     } finally {
+//       isLoading.value = false;
+//     }
+//   }
+
+//   return {
+//     // State
+//     token,
+//     user,
+//     isLoading,
+//     // Getters
+//     isLoggedIn,
+//     isAdmin, // <-- Export getter baru
+//     // Actions
+//     login,
+//     register,
+//     logout,
+//     fetchUser, // <-- Export fetchUser agar bisa dipanggil dari luar jika perlu
+//   };
+// });
+
 import { defineStore } from 'pinia';
-import apiClient from '@/services/api';
+import api from '@/services/api'; // 'api' adalah objek kita, bukan axios
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 
 export const useAuthStore = defineStore('auth', () => {
-  // --- STATE ---
-  // Mencoba mengambil token dari localStorage saat store pertama kali dibuat
   const token = ref(localStorage.getItem('token') || null);
-  // State untuk menyimpan informasi pengguna, jika diperlukan
-  // Bisa diisi dengan data user yang didapat dari endpoint /auth/user
-  const user = ref(null); // Bisa diisi dengan info user jika endpoint-nya ada
+  const user = ref(JSON.parse(localStorage.getItem('user')) || { username: null, role: null });
   const isLoading = ref(false);
-
-  // Inisialisasi router untuk navigasi
   const router = useRouter();
-
-  // --- GETTERS ---
-  // Getter untuk memeriksa apakah pengguna sudah login
   const isLoggedIn = computed(() => !!token.value);
+  const isAdmin = computed(() => user.value?.role === 'ADMIN');
 
-  // --- ACTIONS ---
-
-  // Fungsi baru untuk mengambil data user
   async function fetchUser() {
     if (token.value) {
       try {
-        // Atur header otorisasi sebelum memanggil endpoint
-        // axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`;
-        const response = await apiClient.get('http://localhost:8080/auth/me');
+        // PERBAIKAN: Panggil metode getMe() dari objek api
+        const response = await api.getMe();
         user.value = response.data;
+        localStorage.setItem('user', JSON.stringify(user.value));
       } catch (error) {
-        // Jika token tidak valid, logout
-        console.error("Gagal mengambil data user:", error);
+        console.error("Gagal mengambil data user (token mungkin tidak valid):", error);
         logout();
       }
     }
   }
 
-  // Fungsi untuk menangani login
   async function login(username, password) {
     isLoading.value = true;
     try {
-      // Panggil endpoint /auth/login di backend
-      const response = await apiClient.post('http://localhost:8080/auth/login', {
-        username: username,
-        password: password
-      });
+      // PERBAIKAN: Panggil metode login() dari objek api
+      const response = await api.login({ username, password });
       
-      const receivedToken = response.data;
+      const receivedToken = response.data.token;
       token.value = receivedToken;
-
-      // Simpan token ke localStorage agar tetap login setelah refresh
       localStorage.setItem('token', receivedToken);
-
-      await fetchUser(); // Ambil data user setelah login berhasil
-
-      // Atur header Authorization untuk semua permintaan axios selanjutnya
-    //   axios.defaults.headers.common['Authorization'] = `Bearer ${receivedToken}`;
-
+      await fetchUser();
     } catch (error) {
-      // Jika gagal, bersihkan token dan lempar error agar bisa ditangani di halaman login
       logout();
       throw error;
     } finally {
@@ -67,28 +151,23 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Fungsi untuk menangani logout
   function logout() {
     token.value = null;
-    user.value = null;
+    user.value = { username: null, role: null };
     localStorage.removeItem('token');
-    // delete axios.defaults.headers.common['Authorization'];
-    // Arahkan kembali ke halaman login
+    localStorage.removeItem('user');
     router.push('/login');
   }
 
-  // Fungsi untuk menangani registrasi
   async function register(username, password) {
     isLoading.value = true;
     try {
-      const response = await apiClient.post('http://localhost:8080/auth/register', {
-        username: username,
-        password: password
-      });
+      // PERBAIKAN: Panggil metode register() dari objek api
+      const response = await api.register({ username, password });
       return response.data.message;
     } catch (error) {
-      if (error.response && error.response.data && error.response.data.message) {
-        throw new Error(error.response.data.message);
+      if (error.response && error.response.data && error.response.data.error) {
+        throw new Error(error.response.data.error);
       }
       throw new Error('Terjadi kesalahan saat registrasi.');
     } finally {
@@ -96,14 +175,15 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Return semua state, getter, dan action agar bisa digunakan di komponen lain
   return {
     token,
     user,
     isLoading,
     isLoggedIn,
+    isAdmin,
     login,
     register,
-    logout
+    logout,
+    fetchUser,
   };
 });

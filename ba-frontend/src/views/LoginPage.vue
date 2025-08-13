@@ -1,23 +1,42 @@
 <script setup>
 import { ref } from 'vue';
 import { useAuthStore } from '../stores/auth';
-import { useRouter } from 'vue-router';
+// --- PERUBAHAN: Impor useRoute untuk membaca query parameter ---
+import { useRouter, useRoute } from 'vue-router';
 
 const authStore = useAuthStore();
 const router = useRouter();
+const route = useRoute(); // <-- Dapatkan informasi rute saat ini
 
 const username = ref('');
 const password = ref('');
 const error = ref(null);
 
 async function handleLogin() {
-  error.value = null; // Reset error
+  error.value = null;
   try {
     await authStore.login(username.value, password.value);
-    // Jika berhasil, arahkan ke halaman utama
-    router.push('/'); 
+
+    // --- PERBAIKAN UTAMA: Logika Pengalihan Berdasarkan Peran ---
+    
+    // Prioritas pertama: Cek apakah ada tujuan redirect dari URL.
+    // Ini berguna jika pengguna mencoba mengakses halaman admin sebelum login.
+    const redirectPath = route.query.redirect;
+    if (redirectPath) {
+      router.push(redirectPath);
+      return; // Hentikan eksekusi di sini
+    }
+    
+    // Prioritas kedua: Jika tidak ada redirect, cek peran pengguna.
+    if (authStore.isAdmin) {
+      // Jika pengguna adalah admin, arahkan ke halaman manajemen template.
+      router.push({ name: 'AdminTemplateManager' });
+    } else {
+      // Jika bukan admin (pengguna biasa), arahkan ke halaman generator.
+      router.push({ name: 'Generator' });
+    }
+    
   } catch (err) {
-    // Jika gagal, tampilkan pesan error
     error.value = 'Username atau password salah.';
     console.error('Login failed:', err);
   }
@@ -29,25 +48,14 @@ async function handleLogin() {
     <div class="login-box">
       <h2>Login</h2>
       <form @submit.prevent="handleLogin">
+        <!-- ... (Isi form Anda sudah benar, tidak perlu diubah) ... -->
         <div class="input-group">
           <label for="username">Username</label>
-          <input 
-            id="username" 
-            type="text" 
-            v-model="username" 
-            required 
-            placeholder="Masukkan username"
-          >
+          <input id="username" type="text" v-model="username" required placeholder="Masukkan username">
         </div>
         <div class="input-group">
           <label for="password">Password</label>
-          <input 
-            id="password" 
-            type="password" 
-            v-model="password" 
-            required 
-            placeholder="Masukkan password"
-          >
+          <input id="password" type="password" v-model="password" required placeholder="Masukkan password">
         </div>
         <p v-if="error" class="error-message">{{ error }}</p>
         <button type="submit" :disabled="authStore.isLoading">
