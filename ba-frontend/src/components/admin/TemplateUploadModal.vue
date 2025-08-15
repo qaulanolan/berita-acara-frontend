@@ -37,17 +37,23 @@
             </div>
             
             <h3 class="placeholders-title">Definisi Placeholder Ditemukan</h3>
-            <div v-if="templateData.placeholders.length === 0" class="empty-state">Tidak ada placeholder ditemukan.</div>
-            
-            <div v-for="(placeholder, index) in templateData.placeholders" :key="index" class="placeholder-item">
-              <div class="placeholder-key">{{ placeholder.placeholderKey }}</div>
-              <div class="placeholder-inputs">
-                <input type="text" v-model="placeholder.label" required placeholder="Label untuk Form" class="label-input"/>
-                <select v-model="placeholder.dataType" required>
-                  <option value="TEXT">Teks Singkat</option>
-                  <option value="DATE">Tanggal</option>
-                  <option value="RICH_TEXT">Teks Panjang (HTML)</option>
-                </select>
+            <p class="instruction">Berikan label yang mudah dibaca dan tipe data untuk setiap placeholder.</p>
+
+            <!-- Gunakan v-for ganda untuk merender grup -->
+            <div v-for="(group, groupName) in groupedPlaceholders" :key="groupName">
+              <div v-if="group.length > 0">
+                <h4 class="group-title">{{ groupName }}</h4>
+                <div v-for="placeholder in group" :key="placeholder.placeholderKey" class="placeholder-item">
+                  <div class="placeholder-key">{{ placeholder.placeholderKey }}</div>
+                  <div class="placeholder-inputs">
+                    <input type="text" v-model="placeholder.label" required placeholder="Label untuk Form" class="label-input"/>
+                    <select v-model="placeholder.dataType" required>
+                      <option value="TEXT">Teks Singkat</option>
+                      <option value="DATE">Tanggal</option>
+                      <option value="RICH_TEXT">Teks Panjang (HTML)</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -88,6 +94,47 @@ const templateData = ref({
 
 const modalTitle = computed(() => currentStep.value === 1 ? 'Langkah 1: Unggah File' : 'Langkah 2: Definisikan Metadata');
 
+// ======================================================================
+// === PERUBAHAN UTAMA: Tambahkan computed property ini ===
+// ======================================================================
+const groupedPlaceholders = computed(() => {
+  // Selalu siapkan struktur grup kosong sebagai default
+  const groups = {
+    'Informasi Umum': [],
+    'Nomor & Tanggal': [],
+    'Deskripsi Fitur': [],
+    'Penandatangan': [],
+    'Lainnya': [],
+  };
+
+  // Jika belum ada placeholder, kembalikan grup kosong
+  if (!templateData.value.placeholders || templateData.value.placeholders.length === 0) {
+    return groups;
+  }
+
+  // Loop melalui setiap placeholder dan masukkan ke grup yang sesuai
+  templateData.value.placeholders.forEach(placeholder => {
+    const key = placeholder.placeholderKey;
+    if (key.includes('jenis_request') || key.includes('aplikasi') || key.includes('judul_pekerjaan') || key.includes('tahap')) {
+      groups['Informasi Umum'].push(placeholder);
+    } else if (key.includes('nomor_') || key.includes('tanggal_')) {
+      groups['Nomor & Tanggal'].push(placeholder);
+    } else if (key.includes('fitur.')) {
+      groups['Deskripsi Fitur'].push(placeholder);
+    } else if (key.includes('signatory.')) {
+      groups['Penandatangan'].push(placeholder);
+    } else {
+      groups['Lainnya'].push(placeholder);
+    }
+  });
+
+  // Urutkan signatory agar berurutan (penandatangan1, penandatangan2, mengetahui)
+  // Ini penting agar form-nya logis.
+  groups['Penandatangan'].sort((a, b) => a.placeholderKey.localeCompare(b.placeholderKey));
+
+  return groups;
+});
+
 watch(() => props.show, (newVal) => newVal && resetState());
 
 const resetState = () => {
@@ -114,6 +161,7 @@ const uploadAndScan = async () => {
   if (!selectedFile.value) return;
   isLoading.value = true;
   error.value = null;
+
   const formData = new FormData();
   formData.append('file', selectedFile.value);
 
@@ -121,15 +169,46 @@ const uploadAndScan = async () => {
     const response = await api.uploadAndScanTemplate(formData);
     templateData.value.tempFilePath = response.data.tempFilePath;
     templateData.value.originalFileName = response.data.originalFileName;
-    templateData.value.placeholders = response.data.placeholders.map(key => ({
-      placeholderKey: key,
-      label: '', 
-      dataType: key.includes('deskripsi') ? 'RICH_TEXT' : 'TEXT', // Heuristik sederhana
-      isRequired: true,
-    }));
-    currentStep.value = 2;
+
+    // --- PERBAIKAN UTAMA DI SINI ---
+    
+    // Pola regex untuk mendeteksi placeholder tanggal turunan
+    const dateDerivativePattern = /(_terbilang|_lengkap|_hari|_tanggal|_bulan|_tahun)$/;
+
+    // Filter placeholder yang ditemukan oleh backend
+    const filteredPlaceholders = response.data.placeholders.filter(key => {
+      // Dapatkan nama di dalam kurung kurawal, e.g., "hari_ba_terbilang"
+      const innerKey = key.substring(2, key.length - 1);
+      // Simpan placeholder JIKA BUKAN placeholder tanggal turunan
+      return !dateDerivativePattern.test(innerKey);
+    });
+
+    // Ubah array string placeholder yang sudah difilter menjadi array objek untuk form
+    templateData.value.placeholders = filteredPlaceholders.map(key => {
+      const innerKey = key.substring(2, key.length - 1);
+      let dataType = 'TEXT'; // Default
+      
+      // Heuristik (tebakan pintar) untuk menentukan tipe data default
+      if (innerKey.startsWith('tanggal_')) {
+        dataType = 'DATE';
+      } else if (innerKey.includes('deskripsi')) {
+        dataType = 'RICH_TEXT';
+      }
+      
+      return {
+        placeholderKey: key,
+        label: '', // Kosongkan agar diisi admin
+        dataType: dataType,
+        isRequired: true,
+      };
+    });
+    
+    // ------------------------------------
+
+    currentStep.value = 2; // Pindah ke langkah berikutnya
   } catch (err) {
-    error.value = err.response?.data?.message || 'Gagal memproses file.';
+    console.error("Gagal upload & scan:", err);
+    error.value = err.response?.data?.error || err.message || 'Gagal memproses file.';
   } finally {
     isLoading.value = false;
   }
@@ -188,4 +267,16 @@ const defineAndSave = async () => {
 .placeholder-inputs { display: flex; gap: 1rem; }
 .label-input { flex-grow: 1; }
 label.has-file { border-color: #28a745; color: #28a745; }
+.group-title {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  color: #007bff;
+  border-bottom: 1px solid #dee2e6;
+  padding-bottom: 0.5rem;
+}
+
+.placeholder-item:first-of-type {
+  margin-top: 0;
+}
 </style>

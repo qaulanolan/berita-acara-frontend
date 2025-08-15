@@ -21,11 +21,10 @@ function handleLogout() {
         </div>
         <!-- Tampilkan link ini HANYA jika pengguna sudah login -->
         <template v-if="authStore.isLoggedIn">
-          <RouterLink to="/">Generator</RouterLink>
+          <RouterLink v-if="authStore.isAdmin" to="/admin/templates" class="admin-link">Admin</RouterLink>
+          <RouterLink to="/generator">Generator</RouterLink>
           <RouterLink to="/history">Riwayat</RouterLink>
           <RouterLink to="/preview">Preview</RouterLink>
-          <!-- Tombol Logout -->
-          <!-- <button @click="handleLogout" class="nav-button">Logout</button> -->
         </template>
         <div v-if="authStore.isLoggedIn" class="nav-user">
           <span v-if="authStore.user" class="user-greeting">{{ authStore.user.username }}</span>

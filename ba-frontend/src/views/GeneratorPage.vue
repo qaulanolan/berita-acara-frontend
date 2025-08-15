@@ -18,38 +18,40 @@
 
     <form v-if="formStructure.length > 0 && !isLoadingForm" @submit.prevent="generateDocument" class="dynamic-form">
       <h2>Langkah 2: Isi Data</h2>
-      <div v-for="field in formStructure" :key="field.placeholderKey" class="form-group">
-        <label :for="field.placeholderKey">{{ field.label }}</label>
-        
-        <!-- Render input TEXT -->
-        <input 
-          v-if="field.dataType === 'TEXT'" 
-          type="text"
-          :id="field.placeholderKey"
-          v-model="formData[field.placeholderKey]"
-          :required="field.isRequired"
-        />
-        
-        <!-- Render input DATE -->
-        <VueDatePicker 
-          v-if="field.dataType === 'DATE'" 
-          v-model="formData[field.placeholderKey]"
-          :required="field.isRequired"
-          format="yyyy-MM-dd"
-          :enable-time-picker="false"
-          auto-apply
-          placeholder="Pilih tanggal"
-        />
-        
-        <!-- Render input RICH_TEXT -->
-        <QuillEditor
-          v-if="field.dataType === 'RICH_TEXT'"
-          theme="snow"
-          contentType="html"
-          toolbar="essential"
-          v-model:content="formData[field.placeholderKey]"
-          style="min-height: 150px;"
-        />
+      <!-- === GANTI BAGIAN INI DENGAN V-FOR GANDA === -->
+      <!-- =============================================== -->
+      <div v-for="(group, groupName) in groupedForm" :key="groupName" class="form-section">
+        <div v-if="group.length > 0">
+          <h3 class="group-title">{{ groupName }}</h3>
+          <div v-for="field in group" :key="field.placeholderKey" class="form-group">
+            <label :for="field.placeholderKey">{{ field.label }}</label>
+            
+            <input 
+              v-if="field.dataType === 'TEXT'" 
+              type="text"
+              :id="field.placeholderKey"
+              v-model="formData[field.placeholderKey]"
+              :required="field.isRequired"
+            />
+            <VueDatePicker 
+              v-if="field.dataType === 'DATE'" 
+              v-model="formData[field.placeholderKey]"
+              :required="field.isRequired"
+              format="yyyy-MM-dd"
+              :enable-time-picker="false"
+              auto-apply
+              placeholder="Pilih tanggal"
+            />
+            <QuillEditor
+              v-if="field.dataType === 'RICH_TEXT'"
+              theme="snow"
+              contentType="html"
+              toolbar="essential"
+              v-model:content="formData[field.placeholderKey]"
+              style="min-height: 150px;"
+            />
+          </div>
+        </div>
       </div>
       
       <p v-if="error" class="error-message">{{ error }}</p>
@@ -62,7 +64,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import api from '@/services/api';
 import { QuillEditor } from '@vueup/vue-quill';
 import '@vueup/vue-quill/dist/vue-quill.snow.css';
@@ -76,6 +78,44 @@ const formData = ref({});
 const isLoadingForm = ref(false);
 const isGenerating = ref(false);
 const error = ref(null);
+
+// ======================================================================
+// === PERUBAHAN UTAMA: Tambahkan computed property ini ===
+// ======================================================================
+const groupedForm = computed(() => {
+  const groups = {
+    'Informasi Umum': [],
+    'Nomor & Tanggal': [],
+    'Deskripsi Fitur': [],
+    'Penandatangan': [],
+    'Lainnya': [],
+  };
+
+  if (!formStructure.value || formStructure.value.length === 0) {
+    return groups;
+  }
+
+  // Loop melalui definisi form dari API dan masukkan ke grup yang sesuai
+  formStructure.value.forEach(field => {
+    const key = field.placeholderKey;
+    if (key.includes('jenis_request') || key.includes('aplikasi') || key.includes('judul_pekerjaan') || key.includes('tahap')) {
+      groups['Informasi Umum'].push(field);
+    } else if (key.includes('nomor_') || key.includes('tanggal_')) {
+      groups['Nomor & Tanggal'].push(field);
+    } else if (key.includes('fitur.')) {
+      groups['Deskripsi Fitur'].push(field);
+    } else if (key.includes('signatory.')) {
+      groups['Penandatangan'].push(field);
+    } else {
+      groups['Lainnya'].push(field);
+    }
+  });
+
+  // Urutkan signatory agar berurutan (penandatangan1, penandatangan2, mengetahui)
+  groups['Penandatangan'].sort((a, b) => a.placeholderKey.localeCompare(b.placeholderKey));
+
+  return groups;
+});
 
 onMounted(async () => {
   try {
