@@ -1,9 +1,12 @@
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
+// 1. Impor store otentikasi Anda
 import { useAuthStore } from './stores/auth';
 
+// 2. Buat instance dari store
 const authStore = useAuthStore();
 
+// 3. Buat fungsi untuk menangani logout
 function handleLogout() {
   authStore.logout();
 }
@@ -16,9 +19,10 @@ function handleLogout() {
         <div v-if="authStore.isLoggedIn" class="nav-logout">
           <button @click="handleLogout" class="nav-button">Logout</button>
         </div>
-
+        <!-- Tampilkan link ini HANYA jika pengguna sudah login -->
         <template v-if="authStore.isLoggedIn">
-          <RouterLink to="/">Generator</RouterLink>
+          <RouterLink v-if="authStore.isAdmin" to="/admin/templates" class="admin-link">Admin</RouterLink>
+          <RouterLink to="/generator">Generator</RouterLink>
           <RouterLink to="/history">Riwayat</RouterLink>
           <RouterLink to="/preview">Preview</RouterLink>
         </template>
@@ -26,6 +30,7 @@ function handleLogout() {
           <span v-if="authStore.user" class="user-greeting">{{ authStore.user.username }}</span>
         </div>
 
+        <!-- Tampilkan link ini HANYA jika pengguna BELUM login -->
         <template v-else>
           <RouterLink to="/login">Login</RouterLink>
           <RouterLink to="/register">Register</RouterLink>
@@ -67,7 +72,7 @@ nav {
   box-sizing: border-box;
   position: relative; 
   display: flex;
-  justify-content: center; 
+  justify-content: center; /* Membuat .nav-links berada di tengah */
   align-items: center;
 }
 
@@ -97,9 +102,9 @@ nav a.router-link-exact-active {
 }
 .nav-logout {
   position: absolute;
-  left: 2rem; 
+  left: 2rem; /* Jarak dari ujung kiri */
   top: 50%;
-  transform: translateY(-50%); 
+  transform: translateY(-50%); /* Trik untuk membuatnya pas di tengah vertikal */
 }
 
 .nav-button {
@@ -133,4 +138,8 @@ nav a.router-link-exact-active {
   color: #555;
 }
 
+/* .content {
+  flex-grow: 1;
+  padding: 1rem;
+} */
 </style>

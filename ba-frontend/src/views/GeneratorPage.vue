@@ -1,768 +1,289 @@
-<script setup>
-import { ref, nextTick, watch } from 'vue';
-import apiClient from '@/services/api';
-import { renderAsync } from 'docx-preview';
-import { QuillEditor } from '@vueup/vue-quill';
-import '@vueup/vue-quill/dist/vue-quill.snow.css';
-import DatePicker from 'vue-datepicker-next';
-import 'vue-datepicker-next/index.css';
-
-const step = ref(1);
-const nextStep = () => { if (step.value < 4) step.value++ };
-const prevStep = () => { if (step.value > 1) step.value-- };
-
-const formData = ref({
-  jenisBeritaAcara: 'UAT',
-  tipeRequest: 'Change Request',
-  namaAplikasiSpesifik: 'APLIKASI PELAYANAN PELANGGAN TERPUSAT (AP2T)',
-  judulPekerjaan: 'Change Request Batas Maksimum Token Perdana di AP2T',
-  tahap: '',
-  nomorBA: '4618.BA/STI.01.03/IC010601/2025',
-  nomorSuratRequest: '2357/STI.01.02/F01000402/2025',
-  nomorBaUat: '',
-  tanggalBA: '2024-12-30',
-  tanggalSuratRequest: '2025-01-14',
-  tanggalPengerjaan: '2024-12-28',
-  fiturList: [
-    { deskripsi: '<p>Perubahan besaran token perdana untuk <strong>seluruh transaksi</strong> di AP2T.</p>', status: 'OK', catatan: 'Fitur sudah sesuai.' }
-  ],
-  signatoryList: [
-  ]
-});
-
-const isLoading = ref(false);
-const fileBlob = ref(null);
-const isPreviewVisible = ref(false);
-const docxContainer = ref(null);
-const newHistoryId = ref(null); 
-const signatoryCount= ref(2); 
-async function generateFile() {
-  isLoading.value = true;
-  isPreviewVisible.value = false; 
-  fileBlob.value = null;
-  newHistoryId.value = null;
-  if (docxContainer.value) docxContainer.value.innerHTML = '';
-
-  try {
-    const response = await apiClient.post('http://localhost:8080/berita-acara/generate-docx', formData.value, {
-      responseType: 'blob'
-    });
-    fileBlob.value = response.data;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64 = reader.result;
-      localStorage.setItem('generatedDocx', base64);
-      localStorage.setItem('generatedDocxJenisBA', formData.value.jenisBeritaAcara);
-      localStorage.setItem('generatedDocxJudulBA', formData.value.judulPekerjaan);
-      window.location.href = '/preview'; // pindah ke halaman preview
-    };
-    reader.readAsDataURL(response.data);
-
-  } catch (error) {
-    console.error('Gagal men-generate DOCX:', error);
-    alert('Terjadi kesalahan. Cek console log untuk detail.');
-  } finally {
-    isLoading.value = false;
-  }
-}
-
-
-async function previewFile() {
-  isPreviewVisible.value = !isPreviewVisible.value;
-  if (isPreviewVisible.value && fileBlob.value) {
-    await nextTick();
-    if (docxContainer.value) {
-      docxContainer.value.innerHTML = '';
-      await renderAsync(fileBlob.value, docxContainer.value);
-    }
-  }
-}
-
-function downloadFile() {
-  if (!fileBlob.value) return;
-  const url = window.URL.createObjectURL(fileBlob.value);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', `BA-${formData.value.judulPekerjaan}.docx`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(url);
-}
-
-function updateSignatoryList() {
-  const currentSignatories = formData.value.signatoryList;
-  const newSignatories = [];
-  
-  // Isi penandatangan utama berdasarkan jumlah yang dipilih
-  for (let i = 0; i < signatoryCount.value; i++) {
-    const existing = currentSignatories.find(s => s.tipe === `penandatangan${i + 1}`);
-    newSignatories.push(existing || {
-      nama: '',
-      jabatan: '',
-      perusahaan: 'PT PLN Indonesia Comnets Plus<br>(PLN ICON PLUS)',
-      tipe: `penandatangan${i + 1}`
-    });
-  }
-
-  if (formData.value.jenisBeritaAcara === 'UAT') {
-    const mengetahui = currentSignatories.find(s => s.tipe === 'mengetahui');
-    newSignatories.push(mengetahui || {
-      nama: '',
-      jabatan: '',
-      perusahaan: 'PT PLN (Persero)',
-      tipe: 'mengetahui'
-    });
-  }
-
-  formData.value.signatoryList = newSignatories;
-}
-
-watch(signatoryCount, updateSignatoryList);
-
-watch(() => formData.value.jenisBeritaAcara, updateSignatoryList, { immediate: true });
-
-</script>
-
-
 <template>
-  <div class="app-container">
-    <header class="app-header">
-      <h1>📄 Generator Berita Acara</h1>
-    </header>
+  <div class="generator-container">
+    <h1>Generator Berita Acara</h1>
+    
+    <div class="step-container">
+      <h2>Langkah 1: Pilih Template</h2>
+      <select v-model="selectedTemplateId" @change="fetchFormStructure" class="template-select">
+        <option disabled value="">Pilih salah satu template...</option>
+        <option v-for="template in templates" :key="template.id" :value="template.id">
+          {{ template.templateName }}
+        </option>
+      </select>
+    </div>
 
-    <main class="main-content">
-      <form @submit.prevent="generateFile" class="form-container">
+    <div v-if="isLoadingForm" class="loading-state">
+      <p>Memuat form...</p>
+    </div>
+
+    <form v-if="formStructure.length > 0 && !isLoadingForm" @submit.prevent="generateDocument" class="dynamic-form">
+      <h2>Langkah 2: Isi Data</h2>
+      <div v-for="field in formStructure" :key="field.placeholderKey" class="form-group">
+        <label :for="field.placeholderKey">{{ field.label }}</label>
         
-        <!-- Informasi Umum -->
-        <div class="section-card">
-          <div class="section-header">
-            <h2>Informasi Umum</h2>
-          </div>
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Jenis Berita Acara</label>
-              <select v-model="formData.jenisBeritaAcara" class="form-select">
-                <option>UAT</option>
-                <option>Deployment</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Tipe Request</label>
-              <select v-model="formData.tipeRequest" class="form-select">
-                <option>Change Request</option>
-                <option>Job Request</option>
-              </select>
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label">Judul Pekerjaan</label>
-            <input type="text" v-model="formData.judulPekerjaan" required class="form-input">
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label">Nama Aplikasi Spesifik</label>
-            <input type="text" v-model="formData.namaAplikasiSpesifik" required class="form-input">
-          </div>
-          
-          <div class="form-group">
-            <label class="form-label">Tahap</label>
-            <select v-model="formData.tahap" class="form-select">
-                <option value="">Tidak Ada Tahap</option>
-                <option value="Tahap I">Tahap I</option>
-                <option value="Tahap II">Tahap II</option>
-                <option value="Tahap III">Tahap III</option>
-                <option value="Tahap IV">Tahap IV</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="section-card">
-          <div class="section-header">
-            <h2>Nomor & Tanggal</h2>
-          </div>
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Nomor Berita Acara</label>
-              <input type="text" v-model="formData.nomorBA" required class="form-input">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Tanggal Berita Acara</label>
-              <date-picker 
-                v-model:value="formData.tanggalBA" 
-                format="DD-MM-YYYY" 
-                value-type="YYYY-MM-DD"
-              ></date-picker>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Tanggal Pengujian</label>
-              <date-picker 
-                v-model:value="formData.tanggalPengerjaan" 
-                format="DD-MM-YYYY" 
-                value-type="YYYY-MM-DD"
-              ></date-picker>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Nomor Surat Request</label>
-              <input type="text" v-model="formData.nomorSuratRequest" required class="form-input">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Tanggal Surat Request</label>
-              <date-picker 
-                v-model:value="formData.tanggalSuratRequest" 
-                format="DD-MM-YYYY" 
-                value-type="YYYY-MM-DD"
-              ></date-picker>
-            </div>
-            <div v-if="formData.jenisBeritaAcara === 'Deployment'" class="form-group">
-              <label class="form-label">Nomor BA UAT</label>
-              <input type="text" v-model="formData.nomorBaUat" required class="form-input">
-            </div>
-          </div>
-        </div>
-
-        <div v-if="formData.jenisBeritaAcara === 'UAT'" class="section-card">
-          <div class="section-header">
-            <h2>Deskripsi Fitur</h2>
-          </div>
-          <div v-for="(fitur, index) in formData.fiturList" :key="index" class="fitur-card">
-            <div class="form-group">
-              <label class="form-label">Deskripsi Kegiatan</label>
-              <div class="editor-wrapper">
-                <QuillEditor 
-                  v-model:content="fitur.deskripsi" 
-                  contentType="html" 
-                  theme="snow"
-                  toolbar="essential"
-                />
-              </div>
-            </div>
-            <div class="fitur-meta">
-              <div class="form-group">
-                <label class="form-label">Status</label>
-                <input type="text" v-model="fitur.status" placeholder="Status" class="form-input readonly"></input>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Catatan</label>
-                <input type="text" v-model="fitur.catatan" placeholder="Catatan" class="form-input">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="formData.jenisBeritaAcara === 'Deployment'" class="section-card">
-          <div class="section-header">
-            <h2>Daftar Penandatangan</h2>
-          </div>
-          <div class="signer-grid">
-            <div class="signer-header">
-              <span>Nama Lengkap</span>
-              <span>Jabatan</span>
-              <span>Perusahaan</span>
-              <span>Penandatangan</span>
-            </div>
-            <div v-for="(p, index) in formData.signatoryList" :key="index" class="signer-row">
-              <textarea 
-                  v-model="p.nama" 
-                  placeholder="Nama Lengkap" 
-                  required 
-                  class="form-input"
-                  rows="1"> 
-              </textarea>
-              <textarea 
-                  v-model="p.jabatan" 
-                  placeholder="Jabatan" 
-                  required 
-                  class="form-input"
-                  rows="1"> 
-              </textarea>
-              <select v-model="p.perusahaan" class="form-select">
-                <option value="PT PLN (Persero)">PT PLN (Persero)</option>
-                <option value="PT PLN Indonesia Comnets Plus<br>(PLN ICON PLUS)">
-                  PT PLN Indonesia Comnets Plus (PLN ICON PLUS)
-                </option>
-              </select>
-              <!-- <input type="text" v-model="p.perusahaan" placeholder="Perusahaan" class="form-input"> -->
-              <input type="text" :value="p.tipe" readonly class="form-input readonly">
-            </div>
-          </div>
-        </div>
-
-        <div v-if="formData.jenisBeritaAcara === 'UAT'" class="section-card">
-          <!-- <fieldset> -->
-            <div class="section-header">
-              <h2>Daftar Penandatangan</h2>
-            </div>
-            
-            <div class="signer-count-selector">
-              <label for="signer-count" class="form-label">Jumlah Penandatangan :</label>
-              <p>*selain mengetahui</p>
-              <select class="form-select" v-model.number="signatoryCount">
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-              </select>
-            </div>
-  
-            <div class="signer-grid">
-              <div class="signer-header">
-                <span>Nama Lengkap</span>
-                <span>Jabatan</span>
-                <span>Perusahaan</span>
-                <span>Penandatangan</span>
-              </div>
-              <div v-for="(p, index) in formData.signatoryList" :key="index" class="signer-row">
-                 <textarea 
-                  v-model="p.nama" 
-                  placeholder="Nama Lengkap" 
-                  required
-                  class="form-input"
-                  rows="1"> 
-                </textarea>
-                <textarea 
-                  v-model="p.jabatan" 
-                  placeholder="Jabatan" 
-                  required
-                  class="form-input"
-                  rows="1"> 
-                </textarea>
-                <select v-model="p.perusahaan" class="form-select">
-                  <option value="PT PLN (Persero)">PT PLN (Persero)</option>
-                  <option value="PT PLN Indonesia Comnets Plus<br>(PLN ICON PLUS)">
-                    PT PLN Indonesia Comnets Plus (PLN ICON PLUS)
-                  </option>
-                </select>
-                <!-- <input type="text" v-model="p.perusahaan" placeholder="Perusahaan" class="form-input"> -->
-                <input type="text" v-model="p.tipe" readonly class="form-input readonly">
-              </div>
-            </div>
-          <!-- </fieldset> -->
-        </div>
+        <!-- Render input TEXT -->
+        <input 
+          v-if="field.dataType === 'TEXT'" 
+          type="text"
+          :id="field.placeholderKey"
+          v-model="formData[field.placeholderKey]"
+          :required="field.isRequired"
+        />
         
-        <div class="action-section">
-          <button type="submit" :disabled="isLoading" class="btn-primary">
-            <span v-if="isLoading" class="loading-spinner"></span>
-            {{ isLoading ? 'Generating...' : 'Generate File' }}
-          </button>
-        </div>
-      </form>
+        <!-- Render input DATE -->
+        <VueDatePicker 
+          v-if="field.dataType === 'DATE'" 
+          v-model="formData[field.placeholderKey]"
+          :required="field.isRequired"
+          format="yyyy-MM-dd"
+          :enable-time-picker="false"
+          auto-apply
+          placeholder="Pilih tanggal"
+        />
+        
+        <!-- Render input RICH_TEXT -->
+        <QuillEditor
+          v-if="field.dataType === 'RICH_TEXT'"
+          theme="snow"
+          contentType="html"
+          toolbar="essential"
+          v-model:content="formData[field.placeholderKey]"
+          style="min-height: 150px;"
+        />
+      </div>
       
-      <!-- Action Buttons -->
-      <!-- <div v-if="fileBlob" class="action-buttons">
-        <button @click="downloadFile" class="btn-success">
-          📥 Download .docx
-        </button>
-        <button @click="previewFile" class="btn-secondary">
-          {{ isPreviewVisible ? '👁️ Sembunyikan Preview' : '👁️ Tampilkan Preview' }}
-        </button>
-      </div> -->
-
-      <!-- Preview Section -->
-      <!-- <div v-if="isPreviewVisible" class="preview-section">
-        <div class="section-header-preview">
-          <h2>Preview Dokumen</h2>
-        </div>
-        <div class="preview-container">
-          <div ref="docxContainer" class="docx-content"></div>
-        </div>
-      </div> -->
-    </main>
+      <p v-if="error" class="error-message">{{ error }}</p>
+      
+      <button type="submit" :disabled="isGenerating" class="generate-button">
+        {{ isGenerating ? 'Membuat Dokumen...' : 'Generate Dokumen' }}
+      </button>
+    </form>
   </div>
 </template>
 
+<script setup>
+import { ref, onMounted } from 'vue';
+import api from '@/services/api';
+import { QuillEditor } from '@vueup/vue-quill';
+import '@vueup/vue-quill/dist/vue-quill.snow.css';
+import VueDatePicker from '@vuepic/vue-datepicker';
+import '@vuepic/vue-datepicker/dist/main.css';
+
+const templates = ref([]);
+const selectedTemplateId = ref('');
+const formStructure = ref([]);
+const formData = ref({});
+const isLoadingForm = ref(false);
+const isGenerating = ref(false);
+const error = ref(null);
+
+onMounted(async () => {
+  try {
+    const response = await api.getActiveTemplates();
+    templates.value = response.data;
+  } catch (err) {
+    error.value = "Gagal memuat daftar template.";
+  }
+});
+
+const fetchFormStructure = async () => {
+  if (!selectedTemplateId.value) return;
+  isLoadingForm.value = true;
+  formStructure.value = [];
+  formData.value = {};
+  error.value = null;
+
+  try {
+    const response = await api.getTemplateFormStructure(selectedTemplateId.value);
+    formStructure.value = response.data;
+    response.data.forEach(field => {
+      // Inisialisasi formData dengan nilai default
+      formData.value[field.placeholderKey] = field.dataType === 'RICH_TEXT' ? '<p></p>' : '';
+    });
+  } catch (err) {
+    error.value = "Gagal memuat form untuk template ini.";
+  } finally {
+    isLoadingForm.value = false;
+  }
+};
+
+const generateDocument = async () => {
+  isGenerating.value = true;
+  error.value = null;
+  
+  const payload = {
+    templateId: Number(selectedTemplateId.value),
+    data: formData.value,
+  };
+  
+  try {
+    const response = await api.generateDynamicDocument(payload);
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    let fileName = 'berita-acara.docx';
+    const contentDisposition = response.headers['content-disposition'];
+    if (contentDisposition) {
+      const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
+      if (fileNameMatch && fileNameMatch.length === 2) fileName = fileNameMatch[1];
+    }
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    error.value = "Terjadi kesalahan saat membuat dokumen.";
+  } finally {
+    isGenerating.value = false;
+  }
+};
+</script>
 
 <style scoped>
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html, body {
-  height: 100%;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-}
-
-.app-container {
-  min-height: 100vh;
-  width: 100%;
-  background: #276184;
+.generator-container {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 0 1rem;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  padding: 20px;
-  position: relative;
 }
 
-.app-header {
+h1 {
   text-align: center;
-  color: white;
-  margin-bottom: 30px;
+  color: #333;
+  margin-bottom: 2.5rem;
+  font-weight: 300;
+  letter-spacing: 1px;
 }
 
-.app-header h1 {
-  font-size: 2.5rem;
-  margin: 0;
-  font-weight: 700;
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+.step-container, .dynamic-form {
+  background-color: #ffffff;
+  padding: 2.5rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+  margin-bottom: 2.5rem;
+  transition: all 0.3s ease-in-out;
 }
 
-.main-content {
-  max-width: 1000px;
-  margin: 0 auto;
+h2 {
+  color: #007bff;
+  font-weight: 500;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 1rem;
+}
+
+.template-select {
   width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 1px solid #ced4da;
+  border-radius: 5px;
+  background-color: #fff;
+  transition: border-color 0.2s;
 }
 
-.form-container {
-  display: flex;
-  flex-direction: column;
-  gap: 25px;
+.template-select:focus {
+  border-color: #80bdff;
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
 
-.section-card {
-  background: white;
-  border-radius: 15px;
-  padding: 25px;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.section-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 35px rgba(0,0,0,0.15);
-}
-
-.section-header {
-  margin-bottom: 20px;
-  border-bottom: 3px solid #00AEEF;
-  padding-bottom: 10px;
-}
-
-.section-header h2 {
-  color: #276184;
-  font-size: 1.4rem;
-  margin: 0;
-  font-weight: 600;
-}
-.section-header-preview h2 {
-  color: white;
-  font-size: 1.4rem;
-  margin: 0;
-  font-weight: 600;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
+.dynamic-form {
+  margin-top: 2.5rem;
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 1.5rem;
 }
 
-.form-label {
+.form-group label {
   display: block;
-  margin-bottom: 8px;
-  font-weight: 600;
-  color: #444;
-  font-size: 0.95rem;
-}
-
-.form-input, .form-select {
-  width: 100%;
-  padding: 12px 16px;
-  border: 2px solid #e1e5e9;
-  border-radius: 8px;
-  font-size: .85rem;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-  background: white;
-}
-
-.form-input:focus, .form-select:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.form-input.readonly {
-  background-color: #f8f9fa;
-  cursor: not-allowed;
-  color: #6c757d;
-}
-
-.fitur-card {
-  border: 2px solid #e9ecef;
-  border-radius: 12px;
-  padding: 20px;
-  background: #f8f9fa;
-}
-
-.editor-wrapper {
-  margin-bottom: 15px;
-  background-color: #ffff;
-}
-
-.fitur-meta {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 15px;
-  align-items: end;
-}
-
-.signer-grid {
-  display: grid;
-  gap: 10px;
-}
-
-.signer-header {
-  display: grid;
-  grid-template-columns: 2fr 3fr 2fr 1.5fr;
-  gap: 10px;
+  margin-bottom: 0.5rem;
   font-weight: 600;
   color: #495057;
-  padding: 0 5px;
-  margin-bottom: 10px;
 }
 
-.signer-row {
-  display: grid;
-  grid-template-columns: 2fr 3fr 2fr 1.5fr;
-  gap: 10px;
-  align-items: center;
+/* Common style for input, datepicker, and quill editor wrapper */
+.form-group input, 
+.form-group :deep(.dp__input),
+.form-group :deep(.ql-container) {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #ced4da;
+  border-radius: 5px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+  box-sizing: border-box; /* Ensures padding doesn't affect width */
 }
 
-.action-section {
-  display: flex;
-  justify-content: center;
-  margin-top: 30px;
+.form-group input:focus {
+  border-color: #80bdff;
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
 
-.btn-primary {
-  background: #fff200;
-  color: #276184;
-  border: none;
-  padding: 15px 40px;
-  border-radius: 50px;
+/* Specific styles for VueDatePicker */
+:deep(.dp__input) {
+  padding: 0.75rem 1rem !important; /* Override default padding */
+}
+
+/* Specific styles for QuillEditor */
+:deep(.ql-toolbar.ql-snow) {
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+  border-color: #ced4da;
+}
+:deep(.ql-container.ql-snow) {
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
+  min-height: 180px;
+  font-size: 1rem;
+  border-color: #ced4da;
+}
+:deep(.ql-container.ql-snow:focus-within) {
+  border-color: #80bdff;
+}
+
+.generate-button {
+  width: 100%;
+  padding: 1rem 1.5rem;
   font-size: 1.1rem;
   font-weight: 600;
+  background: linear-gradient(90deg, #28a745, #218838);
+  color: white;
+  border: none;
+  border-radius: 5px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin-top: 1rem;
 }
 
-.btn-primary:hover:not(:disabled) {
+.generate-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-.btn-primary:disabled {
-  opacity: 0.6;
+.generate-button:disabled {
+  background: #a3d9b1;
   cursor: not-allowed;
-  transform: none;
 }
 
-.loading-spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #ffffff;
-  border-top: 2px solid transparent;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.action-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-  margin-top: 25px;
-}
-
-.btn-success {
-  background: linear-gradient(45deg, #28a745, #20c997);
-  color: white;
-  border: none;
-  padding: 12px 25px;
-  border-radius: 25px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
-}
-
-.btn-success:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.6);
-}
-
-.btn-secondary {
-  background: linear-gradient(45deg, #6c757d, #495057);
-  color: white;
-  border: none;
-  padding: 12px 25px;
-  border-radius: 25px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4);
-}
-
-.btn-secondary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(108, 117, 125, 0.6);
-}
-
-.preview-section {
-  margin-top: 30px;
-}
-
-.preview-container {
-  background: white;
-  border-radius: 15px;
-  padding: 25px;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-}
-
-.docx-content {
-  background: #f8f9fa;
-  padding: 30px;
-  border-radius: 10px;
-  min-height: 500px;
-  border: 1px solid #e9ecef;
-}
-
-.ql-container {
-  min-height: 120px;
-  font-size: 1rem;
-  border-radius: 0 0 8px 8px;
-}
-
-.ql-toolbar {
-  border-radius: 8px 8px 0 0;
-}
-
-/* Fix Quill Editor Text Color */
-.ql-editor {
-  color: #333 !important;
-  background-color: #fff !important;
-}
-
-.ql-editor p {
-  color: #333 !important;
-}
-
-.ql-editor strong {
-  color: #333 !important;
-}
-
-.ql-editor * {
-  color: #333 !important;
-}
-
-/* .ql-editor ul, ol {
-  padding-left: 10px;
-} */
-.ql-indent-0 {
-  padding-left: 0;
-}
-.ql-indent-1 {
-  padding-left: 2rem;
-}
-.ql-indent-2 {
-  padding-left: 1rem;
-}
-.ql-indent-3 {
-  padding-left: 5rem;
-}
-
-/* Quill Editor Styling Improvements */
-.ql-toolbar.ql-snow {
-  border: 2px solid #e1e5e9;
-  border-bottom: 1px solid #e1e5e9;
+.loading-state, .error-state {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
   background-color: #f8f9fa;
+  border-radius: 8px;
 }
 
-.ql-container.ql-snow {
-  border: 2px solid #e1e5e9;
-  border-top: none;
-  background-color: white;
+.error-message { 
+  color: #dc3545;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  padding: 1rem;
+  border-radius: 5px;
+  margin-top: 1rem;
 }
-
-.ql-editor.ql-blank::before {
-  color: #999 !important;
-  font-style: italic;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .app-container {
-    padding: 15px;
-  }
-  
-  .app-header h1 {
-    font-size: 2rem;
-  }
-  
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .signer-header,
-  .signer-row {
-    grid-template-columns: 1fr;
-    gap: 5px;
-  }
-  
-  .signer-header {
-    display: none;
-  }
-  
-  .action-buttons {
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .btn-primary,
-  .btn-success,
-  .btn-secondary {
-    width: 100%;
-    max-width: 300px;
-  }
-}
-
-@media (max-width: 480px) {
-  .app-container {
-    padding: 10px;
-  }
-  
-  .section-card {
-    padding: 20px;
-  }
-  
-  .fitur-meta {
-    grid-template-columns: 1fr;
-  }
-}
-
-textarea {
-  width: 100%;
-  padding: 0.6rem;
-  box-sizing: border-box;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-family: inherit; 
-  resize: vertical; 
-}
-
 </style>

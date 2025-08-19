@@ -8,24 +8,27 @@ const router = useRouter();
 
 const username = ref('');
 const password = ref('');
-// const role = ref('user'); // Default role
 const error = ref(null);
 const success = ref(null);
 
 async function handleRegister() {
   error.value = null;
   success.value = null;
-  if (password.value.length < 4) {
+  // Validasi password tetap di sini, ini bagus.
+  if (password.value.length < 4) { 
       error.value = 'Password minimal 4 karakter.';
       return;
   }
   try {
+    // --- PERUBAHAN: Panggil register tanpa mengirimkan 'role' ---
     const message = await authStore.register(username.value, password.value);
+    
     success.value = message + " Anda akan diarahkan ke halaman login.";
     setTimeout(() => {
         router.push('/login');
     }, 2000);
   } catch (err) {
+    // Penanganan error sudah baik
     error.value = err.message || 'Registrasi gagal.';
   }
 }
@@ -44,13 +47,7 @@ async function handleRegister() {
           <label for="password">Password</label>
           <input id="password" type="password" v-model="password" placeholder="Minimal 4 karakter" required>
         </div>
-        <!-- <div class="input-group">
-          <label for="role">Role</label>
-          <select id="role" v-model="role">
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div> -->
+        
         <p v-if="error" class="error-message">{{ error }}</p>
         <p v-if="success" class="success-message">{{ success }}</p>
         <button type="submit" :disabled="authStore.isLoading">

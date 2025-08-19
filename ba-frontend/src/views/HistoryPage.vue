@@ -1,5 +1,5 @@
 <script>
-
+// Gunakan <script> biasa, bukan <script setup> untuk mendefinisikan nama
 export default {
   name: 'HistoryPage'
 }
@@ -10,6 +10,7 @@ import { ref, onMounted, nextTick } from 'vue';
 import apiClient from '@/services/api';
 import { renderAsync } from 'docx-preview';
 
+// --- STATE ---
 const historyList = ref([]);
 const isLoading = ref(true);
 const isBlobLoading = ref(false);
@@ -19,7 +20,7 @@ const selectedNomorBA = ref('');
 const isPreviewVisible = ref(false);
 const docxContainer = ref(null);
 const selectedHistoryId = ref(null);
-
+// --- METHODS ---
 
 onMounted(async () => {
   try {
@@ -33,6 +34,7 @@ onMounted(async () => {
   }
 });
 
+// Hanya mengambil file dan menyimpannya di state
 async function loadFile(item) {
   isBlobLoading.value = true;
   isPreviewVisible.value = false;
@@ -54,6 +56,7 @@ async function loadFile(item) {
   }
 }
 
+// Mengunduh dari state
 function downloadFile() {
   if (!selectedFileBlob.value) return;
   const url = window.URL.createObjectURL(selectedFileBlob.value);
@@ -66,6 +69,7 @@ function downloadFile() {
   window.URL.revokeObjectURL(url);
 }
 
+// **PERBAIKAN**: Menampilkan preview dari state, tidak perlu ID
 async function previewFile() {
   isPreviewVisible.value = !isPreviewVisible.value;
 

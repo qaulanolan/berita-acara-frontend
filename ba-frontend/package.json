@@ -10,6 +10,7 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@vuepic/vue-datepicker": "^11.0.2",
     "@vueup/vue-quill": "^1.2.0",
     "axios": "^1.10.0",
     "docx-preview": "^0.3.5",
