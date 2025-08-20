@@ -1,70 +1,8 @@
-<template>
-  <div class="generator-container">
-    <h1>Generator Berita Acara</h1>
-    
-    <div class="step-container">
-      <h2>Langkah 1: Pilih Template</h2>
-      <select v-model="selectedTemplateId" @change="fetchFormStructure" class="template-select">
-        <option disabled value="">Pilih salah satu template...</option>
-        <option v-for="template in templates" :key="template.id" :value="template.id">
-          {{ template.templateName }}
-        </option>
-      </select>
-    </div>
-
-    <div v-if="isLoadingForm" class="loading-state">
-      <p>Memuat form...</p>
-    </div>
-
-    <form v-if="formStructure.length > 0 && !isLoadingForm" @submit.prevent="generateDocument" class="dynamic-form">
-      <h2>Langkah 2: Isi Data</h2>
-      <!-- === GANTI BAGIAN INI DENGAN V-FOR GANDA === -->
-      <!-- =============================================== -->
-      <div v-for="(group, groupName) in groupedForm" :key="groupName" class="form-section">
-        <div v-if="group.length > 0">
-          <h3 class="group-title">{{ groupName }}</h3>
-          <div v-for="field in group" :key="field.placeholderKey" class="form-group">
-            <label :for="field.placeholderKey">{{ field.label }}</label>
-            
-            <input 
-              v-if="field.dataType === 'TEXT'" 
-              type="text"
-              :id="field.placeholderKey"
-              v-model="formData[field.placeholderKey]"
-              :required="field.isRequired"
-            />
-            <VueDatePicker 
-              v-if="field.dataType === 'DATE'" 
-              v-model="formData[field.placeholderKey]"
-              :required="field.isRequired"
-              format="yyyy-MM-dd"
-              :enable-time-picker="false"
-              auto-apply
-              placeholder="Pilih tanggal"
-            />
-            <QuillEditor
-              v-if="field.dataType === 'RICH_TEXT'"
-              theme="snow"
-              contentType="html"
-              toolbar="essential"
-              v-model:content="formData[field.placeholderKey]"
-              style="min-height: 150px;"
-            />
-          </div>
-        </div>
-      </div>
-      
-      <p v-if="error" class="error-message">{{ error }}</p>
-      
-      <button type="submit" :disabled="isGenerating" class="generate-button">
-        {{ isGenerating ? 'Membuat Dokumen...' : 'Generate Dokumen' }}
-      </button>
-    </form>
-  </div>
-</template>
-
 <script setup>
 import { ref, onMounted, computed } from 'vue';
+import { useRouter } from 'vue-router';
+const router = useRouter();
+
 import api from '@/services/api';
 import { QuillEditor } from '@vueup/vue-quill';
 import '@vueup/vue-quill/dist/vue-quill.snow.css';
@@ -78,6 +16,16 @@ const formData = ref({});
 const isLoadingForm = ref(false);
 const isGenerating = ref(false);
 const error = ref(null);
+
+// --- Tambahkan fungsi helper di sini ---
+const blobToBase64 = (blob) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
 
 // ======================================================================
 // === PERUBAHAN UTAMA: Tambahkan computed property ini ===
@@ -147,6 +95,7 @@ const fetchFormStructure = async () => {
   }
 };
 
+// --- GANTI FUNGSI generateDocument DENGAN VERSI BARU INI ---
 const generateDocument = async () => {
   isGenerating.value = true;
   error.value = null;
@@ -158,27 +107,115 @@ const generateDocument = async () => {
   
   try {
     const response = await api.generateDynamicDocument(payload);
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    let fileName = 'berita-acara.docx';
-    const contentDisposition = response.headers['content-disposition'];
-    if (contentDisposition) {
-      const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
-      if (fileNameMatch && fileNameMatch.length === 2) fileName = fileNameMatch[1];
+    
+    // --- Logika Baru: Simpan ke localStorage dan Redirect ---
+    
+    // 1. Ubah blob menjadi Base64
+    const base64String = await blobToBase64(response.data);
+    
+    // 2. Simpan file Base64 ke localStorage
+    localStorage.setItem('generatedDocx', base64String);
+    
+    // 3. (Opsional) Simpan metadata untuk nama file saat di-download nanti
+    // Kita ambil dari header 'X-History-ID' yang dikirim backend
+    const historyId = response.headers['x-history-id'];
+    if (historyId) {
+        // Arahkan ke halaman preview dengan ID dari riwayat
+        // Asumsi rute preview Anda adalah /preview/:id
+        // Jika rute Anda hanya /preview, maka gunakan router.push({ name: 'Preview' })
+        router.push({ name: 'Preview', params: { id: historyId } });
+    } else {
+        // Fallback jika header tidak ada, arahkan ke halaman preview generik
+        router.push({ name: 'Preview' });
     }
-    link.setAttribute('download', fileName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+
   } catch (err) {
+    console.error("Gagal generate dokumen:", err);
     error.value = "Terjadi kesalahan saat membuat dokumen.";
   } finally {
     isGenerating.value = false;
   }
 };
 </script>
+
+<template>
+  <div class="generator-container">
+    <h1>Generator Berita Acara</h1>
+    
+    <div class="step-container">
+      <h2>Langkah 1: Pilih Template</h2>
+      <select v-model="selectedTemplateId" @change="fetchFormStructure" class="template-select">
+        <option disabled value="">Pilih salah satu template...</option>
+        <option v-for="template in templates" :key="template.id" :value="template.id">
+          {{ template.templateName }}
+        </option>
+      </select>
+    </div>
+
+    <div v-if="isLoadingForm" class="loading-state">
+      <p>Memuat form...</p>
+    </div>
+
+    <form v-if="formStructure.length > 0 && !isLoadingForm" @submit.prevent="generateDocument" class="dynamic-form">
+      <h2>Langkah 2: Isi Data</h2>
+      <!-- === GANTI BAGIAN INI DENGAN V-FOR GANDA === -->
+      <!-- =============================================== -->
+      <div v-for="(group, groupName) in groupedForm" :key="groupName" class="form-section">
+        <div v-if="group.length > 0">
+          <h3 class="group-title">{{ groupName }}</h3>
+          <div v-for="field in group" :key="field.placeholderKey" class="form-group">
+            <label :for="field.placeholderKey">{{ field.label }}</label>
+            
+            <!-- TEXT -->
+            <input 
+              v-if="field.dataType === 'TEXT'" 
+              type="text"
+              :id="field.placeholderKey"
+              v-model="formData[field.placeholderKey]"
+              :required="field.isRequired"
+            />
+            
+            <!-- TEXTAREA -->
+            <textarea
+              v-if="field.dataType === 'TEXTAREA'"
+              :id="field.placeholderKey"
+              v-model="formData[field.placeholderKey]"
+              :required="field.isRequired"
+              rows="3"
+            ></textarea>
+
+            <!-- DATE -->
+            <VueDatePicker 
+              v-if="field.dataType === 'DATE'" 
+              v-model="formData[field.placeholderKey]"
+              :required="field.isRequired"
+              format="yyyy-MM-dd"
+              :enable-time-picker="false"
+              auto-apply
+              placeholder="Pilih tanggal"
+            />
+
+            <!-- RICH_TEXT -->
+            <QuillEditor
+              v-if="field.dataType === 'RICH_TEXT'"
+              theme="snow"
+              contentType="html"
+              toolbar="essential"
+              v-model:content="formData[field.placeholderKey]"
+              style="min-height: 150px;"
+            />
+          </div>
+        </div>
+      </div>
+      
+      <p v-if="error" class="error-message">{{ error }}</p>
+      
+      <button type="submit" :disabled="isGenerating" class="generate-button">
+        {{ isGenerating ? 'Membuat Dokumen...' : 'Generate Dokumen' }}
+      </button>
+    </form>
+  </div>
+</template>
 
 <style scoped>
 .generator-container {
@@ -247,6 +284,7 @@ h2 {
 
 /* Common style for input, datepicker, and quill editor wrapper */
 .form-group input, 
+.form-group textarea,
 .form-group :deep(.dp__input),
 .form-group :deep(.ql-container) {
   width: 100%;
@@ -258,7 +296,8 @@ h2 {
   box-sizing: border-box; /* Ensures padding doesn't affect width */
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group textarea:focus {
   border-color: #80bdff;
   outline: 0;
   box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);

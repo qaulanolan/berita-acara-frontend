@@ -57,6 +57,21 @@ export default {
     return apiClient.delete(`/api/admin/templates/${id}`);
   },
 
+   // === TAMBAHAN: Endpoint untuk edit template ===
+  updateTemplate(id, payload) {
+    return apiClient.put(`/api/admin/templates/${id}`, payload);
+  },
+  
+  // === TAMBAHAN: Endpoint untuk mengubah status template ===
+  updateTemplateStatus(id, statusData) {
+    return apiClient.patch(`/api/admin/templates/${id}/status`, statusData);
+  },
+  
+  // === TAMBAHAN: Endpoint untuk mendapatkan detail template ===
+  getTemplateDetail(id) {
+    return apiClient.get(`/api/admin/templates/${id}`);
+  },
+
   // ===================================
   // == Endpoint Pengguna Biasa ==
   // ===================================
