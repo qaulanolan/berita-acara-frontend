@@ -27,6 +27,63 @@ const blobToBase64 = (blob) => {
   });
 };
 
+// === TAMBAHKAN OPTIONS UNTUK SELECT ===
+const tahapOptions = ref([
+  { value: 'Tahap 1', label: 'Tahap 1' },
+  { value: 'Tahap 2', label: 'Tahap 2' },
+  { value: 'Tahap 3', label: 'Tahap 3' },
+  { value: 'Tahap 4', label: 'Tahap 4' }
+]);
+
+const jenisRequestOptions = ref([
+  { value: 'PENGEMBANGAN', label: 'Job Request' },
+  { value: 'PERUBAHAN', label: 'Change Request' }
+]);
+
+// === FUNGSI UNTUK MENGELOMPOKKAN PENANDATANGAN ===
+const groupSignatories = (signatoryFields) => {
+  const grouped = {};
+  
+  signatoryFields.forEach(field => {
+    const key = field.placeholderKey;
+    // Extract signatory number from field key (e.g., signatory.penandatangan1.nama -> penandatangan1)
+    const match = key.match(/signatory\.(\w+)\./);
+    if (match) {
+      const signatoryKey = match[1];
+      if (!grouped[signatoryKey]) {
+        grouped[signatoryKey] = {};
+      }
+      
+      // Determine field type (jabatan, nama, or perusahaan)
+      if (key.includes('.jabatan')) {
+        grouped[signatoryKey].jabatan = field;
+      } else if (key.includes('.nama')) {
+        grouped[signatoryKey].nama = field;
+      } else if (key.includes('.perusahaan')) {
+        grouped[signatoryKey].perusahaan = field;
+      }
+    }
+  });
+  
+  return grouped;
+};
+
+// === FUNGSI HELPER UNTUK MENENTUKAN APAKAH FIELD ADALAH SELECT ===
+const isSelectField = (field) => {
+  const key = field.placeholderKey.toLowerCase();
+  return key.includes('tahap') || key.includes('jenis_request');
+};
+
+const getSelectOptions = (field) => {
+  const key = field.placeholderKey.toLowerCase();
+  if (key.includes('tahap')) {
+    return tahapOptions.value;
+  } else if (key.includes('jenis_request')) {
+    return jenisRequestOptions.value;
+  }
+  return [];
+};
+
 // ======================================================================
 // === PERUBAHAN UTAMA: Tambahkan computed property ini ===
 // ======================================================================
@@ -158,52 +215,133 @@ const generateDocument = async () => {
 
     <form v-if="formStructure.length > 0 && !isLoadingForm" @submit.prevent="generateDocument" class="dynamic-form">
       <h2>Langkah 2: Isi Data</h2>
-      <!-- === GANTI BAGIAN INI DENGAN V-FOR GANDA === -->
-      <!-- =============================================== -->
+      <!-- === RENDER FORM GROUPS === -->
       <div v-for="(group, groupName) in groupedForm" :key="groupName" class="form-section">
         <div v-if="group.length > 0">
           <h3 class="group-title">{{ groupName }}</h3>
-          <div v-for="field in group" :key="field.placeholderKey" class="form-group">
-            <label :for="field.placeholderKey">{{ field.label }}</label>
-            
-            <!-- TEXT -->
-            <input 
-              v-if="field.dataType === 'TEXT'" 
-              type="text"
-              :id="field.placeholderKey"
-              v-model="formData[field.placeholderKey]"
-              :required="field.isRequired"
-            />
-            
-            <!-- TEXTAREA -->
-            <textarea
-              v-if="field.dataType === 'TEXTAREA'"
-              :id="field.placeholderKey"
-              v-model="formData[field.placeholderKey]"
-              :required="field.isRequired"
-              rows="3"
-            ></textarea>
+          
+          <!-- === KHUSUS UNTUK PENANDATANGAN: TAMPIL HORIZONTAL === -->
+          <div v-if="groupName === 'Penandatangan'" class="signatory-section">
+            <div class="signatory-table">
+              <div class="signatory-headers">
+                <div class="header-item">Nama Lengkap</div>
+                <div class="header-item">Jabatan</div>
+                <div class="header-item">Perusahaan</div>
+                <div class="header-item">Penandatangan</div>
+              </div>
+              
+              <!-- Render berdasarkan field yang ada dari API -->
+              <div v-for="(signatoryGroup, signatoryKey) in groupSignatories(group)" :key="signatoryKey" 
+                   class="signatory-row" 
+                   :class="{ 'mengetahui-row': signatoryKey.includes('mengetahui') }">
+                <div class="signatory-cell">
+                  <textarea
+                    v-if="signatoryGroup.nama"
+                    type=""
+                    :id="signatoryGroup.nama.placeholderKey"
+                    v-model="formData[signatoryGroup.nama.placeholderKey]"
+                    :placeholder="signatoryGroup.nama.label"
+                    :required="signatoryGroup.nama.isRequired"
+                    class="signatory-input"
+                  ></textarea>
+                </div>
+                <div class="signatory-cell">
+                  <textarea
+                    v-if="signatoryGroup.jabatan"
+                    :id="signatoryGroup.jabatan.placeholderKey"
+                    v-model="formData[signatoryGroup.jabatan.placeholderKey]"
+                    :placeholder="signatoryGroup.jabatan.label"
+                    :required="signatoryGroup.jabatan.isRequired"
+                    class="signatory-input"
+                  ></textarea>
+                </div>
+                <div class="signatory-cell">
+                  <select 
+                    v-if="signatoryGroup.perusahaan"
+                    :id="signatoryGroup.perusahaan.placeholderKey"
+                    v-model="formData[signatoryGroup.perusahaan.placeholderKey]"
+                    :required="signatoryGroup.perusahaan.isRequired"
+                    class="signatory-select"
+                  >
+                    <option value="">Pilih Perusahaan</option>
+                    <option value="PT PLN Indonesia Comnets Plus<br>(Icon Plus)">PT PLN Indonesia Comnets Plus (Icon Plus)</option>
+                    <option value="PT PLN Persero">PT PLN Persero</option>
+                  </select>
+                </div>
+                <div class="signatory-cell">
+                  <input 
+                    type="text"
+                    :value="signatoryKey"
+                    readonly
+                    class="signatory-input readonly"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- === GRUP LAINNYA: TAMPIL VERTIKAL BIASA === -->
+          <div v-else>
+            <div v-for="field in group" :key="field.placeholderKey" class="form-group">
+              <label :for="field.placeholderKey">{{ field.label }}</label>
+              
+              <!-- SELECT untuk TAHAP dan JENIS REQUEST -->
+              <select 
+                v-if="isSelectField(field)"
+                :id="field.placeholderKey"
+                v-model="formData[field.placeholderKey]"
+                :required="field.isRequired"
+                class="form-select"
+              >
+                <option disabled value="">-- Pilih {{ field.label }} --</option>
+                <option 
+                  v-for="option in getSelectOptions(field)" 
+                  :key="option.value" 
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </option>
+              </select>
+              
+              <!-- TEXT -->
+              <input 
+                v-else-if="field.dataType === 'TEXT'" 
+                type="text"
+                :id="field.placeholderKey"
+                v-model="formData[field.placeholderKey]"
+                :required="field.isRequired"
+              />
+              
+              <!-- TEXTAREA -->
+              <textarea
+                v-else-if="field.dataType === 'TEXTAREA'"
+                :id="field.placeholderKey"
+                v-model="formData[field.placeholderKey]"
+                :required="field.isRequired"
+                rows="3"
+              ></textarea>
 
-            <!-- DATE -->
-            <VueDatePicker 
-              v-if="field.dataType === 'DATE'" 
-              v-model="formData[field.placeholderKey]"
-              :required="field.isRequired"
-              format="yyyy-MM-dd"
-              :enable-time-picker="false"
-              auto-apply
-              placeholder="Pilih tanggal"
-            />
+              <!-- DATE -->
+              <VueDatePicker 
+                v-else-if="field.dataType === 'DATE'" 
+                v-model="formData[field.placeholderKey]"
+                :required="field.isRequired"
+                format="yyyy-MM-dd"
+                :enable-time-picker="false"
+                auto-apply
+                placeholder="Pilih tanggal"
+              />
 
-            <!-- RICH_TEXT -->
-            <QuillEditor
-              v-if="field.dataType === 'RICH_TEXT'"
-              theme="snow"
-              contentType="html"
-              toolbar="essential"
-              v-model:content="formData[field.placeholderKey]"
-              style="min-height: 150px;"
-            />
+              <!-- RICH_TEXT -->
+              <QuillEditor
+                v-else-if="field.dataType === 'RICH_TEXT'"
+                theme="snow"
+                contentType="html"
+                toolbar="essential"
+                v-model:content="formData[field.placeholderKey]"
+                style="min-height: 150px;"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -219,7 +357,7 @@ const generateDocument = async () => {
 
 <style scoped>
 .generator-container {
-  max-width: 800px;
+  max-width: 1200px;
   margin: 2rem auto;
   padding: 0 1rem;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -251,7 +389,7 @@ h2 {
   padding-bottom: 1rem;
 }
 
-.template-select {
+.template-select, .form-select {
   width: 100%;
   padding: 0.75rem 1rem;
   font-size: 1rem;
@@ -261,7 +399,7 @@ h2 {
   transition: border-color 0.2s;
 }
 
-.template-select:focus {
+.template-select:focus, .form-select:focus {
   border-color: #80bdff;
   outline: 0;
   box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
@@ -282,9 +420,24 @@ h2 {
   color: #495057;
 }
 
+.group-title {
+  color: #495057;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  margin-top: 2rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.group-title:first-child {
+  margin-top: 0;
+}
+
 /* Common style for input, datepicker, and quill editor wrapper */
 .form-group input, 
 .form-group textarea,
+.form-group select,
 .form-group :deep(.dp__input),
 .form-group :deep(.ql-container) {
   width: 100%;
@@ -297,7 +450,8 @@ h2 {
 }
 
 .form-group input:focus,
-.form-group textarea:focus {
+.form-group textarea:focus,
+.form-group select:focus {
   border-color: #80bdff;
   outline: 0;
   box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
@@ -364,5 +518,116 @@ h2 {
   padding: 1rem;
   border-radius: 5px;
   margin-top: 1rem;
+}
+
+/* === STYLES UNTUK SIGNATORY TABLE === */
+.signatory-section {
+  margin-top: 1rem;
+}
+
+.signatory-table {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #fff;
+}
+
+.signatory-headers {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.header-item {
+  padding: 1rem;
+  font-weight: 600;
+  color: #495057;
+  text-align: center;
+  border-right: 1px solid #dee2e6;
+}
+
+.header-item:last-child {
+  border-right: none;
+}
+
+.signatory-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.signatory-row:last-child {
+  border-bottom: none;
+}
+
+.mengetahui-row {
+  background-color: #f8f9fa;
+}
+
+.signatory-cell {
+  padding: 0.5rem;
+  border-right: 1px solid #dee2e6;
+  display: flex;
+  align-items: center;
+}
+
+.signatory-cell:last-child {
+  border-right: none;
+}
+
+.signatory-input, .signatory-select {
+  width: 100% !important;
+  padding: 0.5rem !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 4px !important;
+  font-size: 0.9rem !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.signatory-input.readonly {
+  background-color: #e9ecef;
+  color: #6c757d;
+  text-align: center;
+  font-weight: 500;
+}
+
+.signatory-input:focus, .signatory-select:focus {
+  border-color: #80bdff !important;
+  outline: 0 !important;
+  box-shadow: 0 0 0 0.1rem rgba(0, 123, 255, 0.25) !important;
+}
+
+/* Responsive untuk mobile */
+@media (max-width: 768px) {
+  .signatory-headers,
+  .signatory-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  
+  .header-item {
+    display: none;
+  }
+  
+  .signatory-cell {
+    border-right: none;
+    border-bottom: 1px solid #dee2e6;
+    padding: 0.75rem;
+  }
+  
+  .signatory-cell:before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #495057;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+  
+  .signatory-input, .signatory-select {
+    font-size: 1rem !important;
+    padding: 0.75rem !important;
+  }
 }
 </style>

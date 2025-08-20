@@ -304,15 +304,15 @@ const generateAutoLabel = (placeholderKey) => {
   if (placeholderKey.startsWith('signatory.')) {
     const signatoryPart = placeholderKey.split('.')[1];
     const signatoryMappings = {
-      'penandatangan1_nama': 'Nama Penandatangan 1',
-      'penandatangan1_jabatan': 'Jabatan Penandatangan 1',
-      'penandatangan1_instansi': 'Instansi Penandatangan 1',
-      'penandatangan2_nama': 'Nama Penandatangan 2',
-      'penandatangan2_jabatan': 'Jabatan Penandatangan 2',
-      'penandatangan2_instansi': 'Instansi Penandatangan 2',
-      'mengetahui_nama': 'Nama Yang Mengetahui',
-      'mengetahui_jabatan': 'Jabatan Yang Mengetahui',
-      'mengetahui_instansi': 'Instansi Yang Mengetahui',
+      'nama': 'Nama',
+      'jabatan': 'Jabatan',
+      'perusahaan': 'Perusahaan',
+      // 'penandatangan2_nama': 'Nama Penandatangan 2',
+      // 'penandatangan2_jabatan': 'Jabatan Penandatangan 2',
+      // 'penandatangan2_instansi': 'Instansi Penandatangan 2',
+      // 'mengetahui_nama': 'Nama Yang Mengetahui',
+      // 'mengetahui_jabatan': 'Jabatan Yang Mengetahui',
+      // 'mengetahui_instansi': 'Instansi Yang Mengetahui',
     };
     
     return signatoryMappings[signatoryPart] || capitalizeWords(signatoryPart.replace(/_/g, ' '));
