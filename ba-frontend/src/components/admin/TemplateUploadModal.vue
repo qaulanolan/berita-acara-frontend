@@ -113,6 +113,7 @@
                       />
                       <select v-model="placeholder.dataType" required>
                         <option value="TEXT">Teks Singkat</option>
+                        <option value="TEXTAREA">Textarea (beberapa baris)</option>
                         <option value="DATE">Tanggal</option>
                         <option value="RICH_TEXT">Teks Panjang (HTML)</option>
                       </select>
@@ -391,6 +392,8 @@ const uploadAndScan = async () => {
         dataType = 'DATE';
       } else if (innerKey.includes('deskripsi')) {
         dataType = 'RICH_TEXT';
+      } else if (innerKey.includes('signatory')) {
+        dataType = 'TEXTAREA';
       }
       
       return {

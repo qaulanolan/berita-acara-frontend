@@ -1,68 +1,8 @@
-<template>
-  <div class="generator-container">
-    <h1>Generator Berita Acara</h1>
-    
-    <div class="step-container">
-      <h2>Langkah 1: Pilih Template</h2>
-      <select v-model="selectedTemplateId" @change="fetchFormStructure" class="template-select">
-        <option disabled value="">Pilih salah satu template...</option>
-        <option v-for="template in templates" :key="template.id" :value="template.id">
-          {{ template.templateName }}
-        </option>
-      </select>
-    </div>
-
-    <div v-if="isLoadingForm" class="loading-state">
-      <p>Memuat form...</p>
-    </div>
-
-    <form v-if="formStructure.length > 0 && !isLoadingForm" @submit.prevent="generateDocument" class="dynamic-form">
-      <h2>Langkah 2: Isi Data</h2>
-      <div v-for="field in formStructure" :key="field.placeholderKey" class="form-group">
-        <label :for="field.placeholderKey">{{ field.label }}</label>
-        
-        <!-- Render input TEXT -->
-        <input 
-          v-if="field.dataType === 'TEXT'" 
-          type="text"
-          :id="field.placeholderKey"
-          v-model="formData[field.placeholderKey]"
-          :required="field.isRequired"
-        />
-        
-        <!-- Render input DATE -->
-        <VueDatePicker 
-          v-if="field.dataType === 'DATE'" 
-          v-model="formData[field.placeholderKey]"
-          :required="field.isRequired"
-          format="yyyy-MM-dd"
-          :enable-time-picker="false"
-          auto-apply
-          placeholder="Pilih tanggal"
-        />
-        
-        <!-- Render input RICH_TEXT -->
-        <QuillEditor
-          v-if="field.dataType === 'RICH_TEXT'"
-          theme="snow"
-          contentType="html"
-          toolbar="essential"
-          v-model:content="formData[field.placeholderKey]"
-          style="min-height: 150px;"
-        />
-      </div>
-      
-      <p v-if="error" class="error-message">{{ error }}</p>
-      
-      <button type="submit" :disabled="isGenerating" class="generate-button">
-        {{ isGenerating ? 'Membuat Dokumen...' : 'Generate Dokumen' }}
-      </button>
-    </form>
-  </div>
-</template>
-
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
+import { useRouter } from 'vue-router';
+const router = useRouter();
+
 import api from '@/services/api';
 import { QuillEditor } from '@vueup/vue-quill';
 import '@vueup/vue-quill/dist/vue-quill.snow.css';
@@ -76,6 +16,111 @@ const formData = ref({});
 const isLoadingForm = ref(false);
 const isGenerating = ref(false);
 const error = ref(null);
+
+// --- Tambahkan fungsi helper di sini ---
+const blobToBase64 = (blob) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
+// === TAMBAHKAN OPTIONS UNTUK SELECT ===
+const tahapOptions = ref([
+  { value: 'Tahap 1', label: 'Tahap 1' },
+  { value: 'Tahap 2', label: 'Tahap 2' },
+  { value: 'Tahap 3', label: 'Tahap 3' },
+  { value: 'Tahap 4', label: 'Tahap 4' }
+]);
+
+const jenisRequestOptions = ref([
+  { value: 'perubahan', label: 'Perubahan' },
+  { value: 'pengembangan', label: 'Pengembangan' }
+]);
+
+// === FUNGSI UNTUK MENGELOMPOKKAN PENANDATANGAN ===
+const groupSignatories = (signatoryFields) => {
+  const grouped = {};
+  
+  signatoryFields.forEach(field => {
+    const key = field.placeholderKey;
+    // Extract signatory number from field key (e.g., signatory.penandatangan1.nama -> penandatangan1)
+    const match = key.match(/signatory\.(\w+)\./);
+    if (match) {
+      const signatoryKey = match[1];
+      if (!grouped[signatoryKey]) {
+        grouped[signatoryKey] = {};
+      }
+      
+      // Determine field type (jabatan, nama, or perusahaan)
+      if (key.includes('.jabatan')) {
+        grouped[signatoryKey].jabatan = field;
+      } else if (key.includes('.nama')) {
+        grouped[signatoryKey].nama = field;
+      } else if (key.includes('.perusahaan')) {
+        grouped[signatoryKey].perusahaan = field;
+      }
+    }
+  });
+  
+  return grouped;
+};
+
+// === FUNGSI HELPER UNTUK MENENTUKAN APAKAH FIELD ADALAH SELECT ===
+const isSelectField = (field) => {
+  const key = field.placeholderKey.toLowerCase();
+  return key.includes('tahap') || key.includes('jenis_request');
+};
+
+const getSelectOptions = (field) => {
+  const key = field.placeholderKey.toLowerCase();
+  if (key.includes('tahap')) {
+    return tahapOptions.value;
+  } else if (key.includes('jenis_request')) {
+    return jenisRequestOptions.value;
+  }
+  return [];
+};
+
+// ======================================================================
+// === PERUBAHAN UTAMA: Tambahkan computed property ini ===
+// ======================================================================
+const groupedForm = computed(() => {
+  const groups = {
+    'Informasi Umum': [],
+    'Nomor & Tanggal': [],
+    'Deskripsi Fitur': [],
+    'Penandatangan': [],
+    'Lainnya': [],
+  };
+
+  if (!formStructure.value || formStructure.value.length === 0) {
+    return groups;
+  }
+
+  // Loop melalui definisi form dari API dan masukkan ke grup yang sesuai
+  formStructure.value.forEach(field => {
+    const key = field.placeholderKey;
+    if (key.includes('jenis_request') || key.includes('aplikasi') || key.includes('judul_pekerjaan') || key.includes('tahap')) {
+      groups['Informasi Umum'].push(field);
+    } else if (key.includes('nomor_') || key.includes('tanggal_')) {
+      groups['Nomor & Tanggal'].push(field);
+    } else if (key.includes('fitur.')) {
+      groups['Deskripsi Fitur'].push(field);
+    } else if (key.includes('signatory.')) {
+      groups['Penandatangan'].push(field);
+    } else {
+      groups['Lainnya'].push(field);
+    }
+  });
+
+  // Urutkan signatory agar berurutan (penandatangan1, penandatangan2, mengetahui)
+  groups['Penandatangan'].sort((a, b) => a.placeholderKey.localeCompare(b.placeholderKey));
+
+  return groups;
+});
 
 onMounted(async () => {
   try {
@@ -107,6 +152,7 @@ const fetchFormStructure = async () => {
   }
 };
 
+// --- GANTI FUNGSI generateDocument DENGAN VERSI BARU INI ---
 const generateDocument = async () => {
   isGenerating.value = true;
   error.value = null;
@@ -118,27 +164,197 @@ const generateDocument = async () => {
   
   try {
     const response = await api.generateDynamicDocument(payload);
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    let fileName = 'berita-acara.docx';
-    const contentDisposition = response.headers['content-disposition'];
-    if (contentDisposition) {
-      const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
-      if (fileNameMatch && fileNameMatch.length === 2) fileName = fileNameMatch[1];
+    
+    // --- Logika Baru: Simpan ke localStorage dan Redirect ---
+    
+    // 1. Ubah blob menjadi Base64
+    const base64String = await blobToBase64(response.data);
+    
+    // 2. Simpan file Base64 ke localStorage
+    localStorage.setItem('generatedDocx', base64String);
+    
+    // 3. (Opsional) Simpan metadata untuk nama file saat di-download nanti
+    // Kita ambil dari header 'X-History-ID' yang dikirim backend
+    const historyId = response.headers['x-history-id'];
+    if (historyId) {
+        // Arahkan ke halaman preview dengan ID dari riwayat
+        // Asumsi rute preview Anda adalah /preview/:id
+        // Jika rute Anda hanya /preview, maka gunakan router.push({ name: 'Preview' })
+        router.push({ name: 'Preview', params: { id: historyId } });
+    } else {
+        // Fallback jika header tidak ada, arahkan ke halaman preview generik
+        router.push({ name: 'Preview' });
     }
-    link.setAttribute('download', fileName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+
   } catch (err) {
+    console.error("Gagal generate dokumen:", err);
     error.value = "Terjadi kesalahan saat membuat dokumen.";
   } finally {
     isGenerating.value = false;
   }
 };
 </script>
+
+<template>
+  <div class="generator-container">
+    <h1>Generator Berita Acara</h1>
+    
+    <div class="step-container">
+      <h2>Langkah 1: Pilih Template</h2>
+      <select v-model="selectedTemplateId" @change="fetchFormStructure" class="template-select">
+        <option disabled value="">Pilih salah satu template...</option>
+        <option v-for="template in templates" :key="template.id" :value="template.id">
+          {{ template.templateName }}
+        </option>
+      </select>
+    </div>
+
+    <div v-if="isLoadingForm" class="loading-state">
+      <p>Memuat form...</p>
+    </div>
+
+    <form v-if="formStructure.length > 0 && !isLoadingForm" @submit.prevent="generateDocument" class="dynamic-form">
+      <h2>Langkah 2: Isi Data</h2>
+      <!-- === RENDER FORM GROUPS === -->
+      <div v-for="(group, groupName) in groupedForm" :key="groupName" class="form-section">
+        <div v-if="group.length > 0">
+          <h3 class="group-title">{{ groupName }}</h3>
+          
+          <!-- === KHUSUS UNTUK PENANDATANGAN: TAMPIL HORIZONTAL === -->
+          <div v-if="groupName === 'Penandatangan'" class="signatory-section">
+            <div class="signatory-table">
+              <div class="signatory-headers">
+                <div class="header-item">Nama Lengkap</div>
+                <div class="header-item">Jabatan</div>
+                <div class="header-item">Perusahaan</div>
+                <div class="header-item">Penandatangan</div>
+              </div>
+              
+              <!-- Render berdasarkan field yang ada dari API -->
+              <div v-for="(signatoryGroup, signatoryKey) in groupSignatories(group)" :key="signatoryKey" 
+                   class="signatory-row" 
+                   :class="{ 'mengetahui-row': signatoryKey.includes('mengetahui') }">
+                <div class="signatory-cell">
+                  <input 
+                    v-if="signatoryGroup.nama"
+                    type="text"
+                    :id="signatoryGroup.nama.placeholderKey"
+                    v-model="formData[signatoryGroup.nama.placeholderKey]"
+                    :placeholder="signatoryGroup.nama.label"
+                    :required="signatoryGroup.nama.isRequired"
+                    class="signatory-input"
+                  />
+                </div>
+                <div class="signatory-cell">
+                  <input 
+                    v-if="signatoryGroup.jabatan"
+                    type="text"
+                    :id="signatoryGroup.jabatan.placeholderKey"
+                    v-model="formData[signatoryGroup.jabatan.placeholderKey]"
+                    :placeholder="signatoryGroup.jabatan.label"
+                    :required="signatoryGroup.jabatan.isRequired"
+                    class="signatory-input"
+                  />
+                </div>
+                <div class="signatory-cell">
+                  <select 
+                    v-if="signatoryGroup.perusahaan"
+                    :id="signatoryGroup.perusahaan.placeholderKey"
+                    v-model="formData[signatoryGroup.perusahaan.placeholderKey]"
+                    :required="signatoryGroup.perusahaan.isRequired"
+                    class="signatory-select"
+                  >
+                    <option value="">Pilih Perusahaan</option>
+                    <option value="PT PLN Indonesia Comnets Plus (Icon Plus)">PT PLN Indonesia Comnets Plus (Icon Plus)</option>
+                    <option value="PT PLN Persero">PT PLN Persero</option>
+                  </select>
+                </div>
+                <div class="signatory-cell">
+                  <input 
+                    type="text"
+                    :value="signatoryKey"
+                    readonly
+                    class="signatory-input readonly"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- === GRUP LAINNYA: TAMPIL VERTIKAL BIASA === -->
+          <div v-else>
+            <div v-for="field in group" :key="field.placeholderKey" class="form-group">
+              <label :for="field.placeholderKey">{{ field.label }}</label>
+              
+              <!-- SELECT untuk TAHAP dan JENIS REQUEST -->
+              <select 
+                v-if="isSelectField(field)"
+                :id="field.placeholderKey"
+                v-model="formData[field.placeholderKey]"
+                :required="field.isRequired"
+                class="form-select"
+              >
+                <option disabled value="">-- Pilih {{ field.label }} --</option>
+                <option 
+                  v-for="option in getSelectOptions(field)" 
+                  :key="option.value" 
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </option>
+              </select>
+              
+              <!-- TEXT -->
+              <input 
+                v-else-if="field.dataType === 'TEXT'" 
+                type="text"
+                :id="field.placeholderKey"
+                v-model="formData[field.placeholderKey]"
+                :required="field.isRequired"
+              />
+              
+              <!-- TEXTAREA -->
+              <textarea
+                v-else-if="field.dataType === 'TEXTAREA'"
+                :id="field.placeholderKey"
+                v-model="formData[field.placeholderKey]"
+                :required="field.isRequired"
+                rows="3"
+              ></textarea>
+
+              <!-- DATE -->
+              <VueDatePicker 
+                v-else-if="field.dataType === 'DATE'" 
+                v-model="formData[field.placeholderKey]"
+                :required="field.isRequired"
+                format="yyyy-MM-dd"
+                :enable-time-picker="false"
+                auto-apply
+                placeholder="Pilih tanggal"
+              />
+
+              <!-- RICH_TEXT -->
+              <QuillEditor
+                v-else-if="field.dataType === 'RICH_TEXT'"
+                theme="snow"
+                contentType="html"
+                toolbar="essential"
+                v-model:content="formData[field.placeholderKey]"
+                style="min-height: 150px;"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <p v-if="error" class="error-message">{{ error }}</p>
+      
+      <button type="submit" :disabled="isGenerating" class="generate-button">
+        {{ isGenerating ? 'Membuat Dokumen...' : 'Generate Dokumen' }}
+      </button>
+    </form>
+  </div>
+</template>
 
 <style scoped>
 .generator-container {
@@ -174,7 +390,7 @@ h2 {
   padding-bottom: 1rem;
 }
 
-.template-select {
+.template-select, .form-select {
   width: 100%;
   padding: 0.75rem 1rem;
   font-size: 1rem;
@@ -184,7 +400,7 @@ h2 {
   transition: border-color 0.2s;
 }
 
-.template-select:focus {
+.template-select:focus, .form-select:focus {
   border-color: #80bdff;
   outline: 0;
   box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
@@ -205,8 +421,24 @@ h2 {
   color: #495057;
 }
 
+.group-title {
+  color: #495057;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  margin-top: 2rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.group-title:first-child {
+  margin-top: 0;
+}
+
 /* Common style for input, datepicker, and quill editor wrapper */
 .form-group input, 
+.form-group textarea,
+.form-group select,
 .form-group :deep(.dp__input),
 .form-group :deep(.ql-container) {
   width: 100%;
@@ -218,7 +450,9 @@ h2 {
   box-sizing: border-box; /* Ensures padding doesn't affect width */
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
   border-color: #80bdff;
   outline: 0;
   box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
@@ -285,5 +519,116 @@ h2 {
   padding: 1rem;
   border-radius: 5px;
   margin-top: 1rem;
+}
+
+/* === STYLES UNTUK SIGNATORY TABLE === */
+.signatory-section {
+  margin-top: 1rem;
+}
+
+.signatory-table {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #fff;
+}
+
+.signatory-headers {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 120px;
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.header-item {
+  padding: 1rem;
+  font-weight: 600;
+  color: #495057;
+  text-align: center;
+  border-right: 1px solid #dee2e6;
+}
+
+.header-item:last-child {
+  border-right: none;
+}
+
+.signatory-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 120px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.signatory-row:last-child {
+  border-bottom: none;
+}
+
+.mengetahui-row {
+  background-color: #f8f9fa;
+}
+
+.signatory-cell {
+  padding: 0.5rem;
+  border-right: 1px solid #dee2e6;
+  display: flex;
+  align-items: center;
+}
+
+.signatory-cell:last-child {
+  border-right: none;
+}
+
+.signatory-input, .signatory-select {
+  width: 100% !important;
+  padding: 0.5rem !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 4px !important;
+  font-size: 0.9rem !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.signatory-input.readonly {
+  background-color: #e9ecef;
+  color: #6c757d;
+  text-align: center;
+  font-weight: 500;
+}
+
+.signatory-input:focus, .signatory-select:focus {
+  border-color: #80bdff !important;
+  outline: 0 !important;
+  box-shadow: 0 0 0 0.1rem rgba(0, 123, 255, 0.25) !important;
+}
+
+/* Responsive untuk mobile */
+@media (max-width: 768px) {
+  .signatory-headers,
+  .signatory-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  
+  .header-item {
+    display: none;
+  }
+  
+  .signatory-cell {
+    border-right: none;
+    border-bottom: 1px solid #dee2e6;
+    padding: 0.75rem;
+  }
+  
+  .signatory-cell:before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #495057;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+  
+  .signatory-input, .signatory-select {
+    font-size: 1rem !important;
+    padding: 0.75rem !important;
+  }
 }
 </style>
