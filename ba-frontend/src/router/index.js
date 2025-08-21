@@ -39,11 +39,7 @@ const routes = [
     meta: { requiresAuth: true } // Halaman ini butuh login
   },
   {
-<<<<<<< HEAD
-    path: '/preview/:id', // Asumsi preview butuh ID
-=======
     path: '/preview/:id?', // Asumsi preview butuh ID
->>>>>>> ad57ec71e1f63e85bd3bde486cbeefe2453b1ae9
     name: 'Preview',
     component: PreviewPage,
     props: true, // Mengirimkan 'id' sebagai prop ke komponen
