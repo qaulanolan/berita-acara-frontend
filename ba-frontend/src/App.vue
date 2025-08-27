@@ -127,8 +127,34 @@ function handleLogout() {
   flex-direction: column;
   min-height: 100vh;
   font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, #e3f2fd 0%, #ffffff 50%, #f8f9fa 100%);
+  /* Background gradasi biru kuning putih */
+  background: linear-gradient(
+    135deg,
+    #003f88 0%,        /* Biru PLN gelap */
+    #0056b3 15%,       /* Biru PLN medium */
+    #4dabf7 30%,       /* Biru muda */
+    #e3f2fd 45%,       /* Biru sangat muda */
+    #ffffff 55%,       /* Putih */
+    #fff9c4 70%,       /* Kuning sangat muda */
+    #fff176 85%,       /* Kuning muda */
+    #ffd700 100%       /* Kuning emas */
+  );
   background-attachment: fixed;
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+/* Animasi untuk gradasi background */
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 /* === HEADER STYLES === */
@@ -179,6 +205,7 @@ function handleLogout() {
   font-weight: 700;
   color: #003f88;
   letter-spacing: -0.5px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 /* === NAVIGATION STYLES === */
@@ -203,12 +230,16 @@ function handleLogout() {
   position: relative;
   font-size: 0.95rem;
   white-space: nowrap;
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .nav-link:hover {
   background: rgba(0, 86, 179, 0.1);
   color: #0056b3;
   transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(0, 86, 179, 0.2);
 }
 
 .nav-link.router-link-active {
@@ -246,9 +277,11 @@ function handleLogout() {
   align-items: center;
   gap: 1rem;
   padding: 0.5rem;
-  background: rgba(0, 63, 136, 0.05);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
   border-radius: 12px;
-  border: 1px solid rgba(0, 63, 136, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .user-avatar {
@@ -335,6 +368,10 @@ function handleLogout() {
 }
 
 @media (max-width: 768px) {
+  #app {
+    background-size: 300% 300%;
+  }
+
   .header-container {
     padding: 0 1rem;
     gap: 1rem;
@@ -399,6 +436,10 @@ function handleLogout() {
 }
 
 @media (max-width: 640px) {
+  #app {
+    background-size: 200% 200%;
+  }
+
   .header-container {
     flex-direction: column;
     gap: 0.75rem;

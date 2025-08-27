@@ -527,33 +527,40 @@ const generateDocument = async () => {
 </template>
 
 <style scoped>
+/* === GLOBAL STYLES === */
 * {
   box-sizing: border-box;
 }
 
+/* === PAGE LAYOUT === */
 .page-wrapper {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #e3f2fd 0%, #ffffff 50%, #f8f9fa 100%);
-  padding: 2rem 1rem;
+  min-height: calc(100vh - 70px);
+  padding: 2rem 0;
+  background: transparent; /* Inherit from App.vue background */
   font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .generator-container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
+  padding: 0 2rem;
 }
 
+/* === HEADER SECTION === */
 .page-header {
-  text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: 2.5rem;
 }
 
 .header-content {
-  background: linear-gradient(135deg, #003f88 0%, #0056b3 100%);
-  color: white;
-  padding: 3rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
   border-radius: 20px;
-  box-shadow: 0 15px 35px rgba(0, 63, 136, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 63, 136, 0.1);
   position: relative;
   overflow: hidden;
 }
@@ -575,49 +582,58 @@ const generateDocument = async () => {
 }
 
 .header-icon {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 80px;
-  height: 80px;
-  background: rgba(255, 215, 0, 0.2);
-  border-radius: 50%;
-  margin-bottom: 1.5rem;
-  color: #ffd700;
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, #003f88 0%, #0056b3 100%);
+  border-radius: 16px;
+  color: white;
+  flex-shrink: 0;
+  box-shadow: 0 8px 24px rgba(0, 63, 136, 0.3);
   position: relative;
   z-index: 1;
 }
 
-.header-content h1 {
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin: 0 0 1rem 0;
+.header-text {
+  flex: 1;
   position: relative;
   z-index: 1;
+}
+
+.header-text h1 {
+  margin: 0 0 0.5rem 0;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #003f88;
+  letter-spacing: -0.5px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .header-subtitle {
-  font-size: 1.1rem;
-  opacity: 0.9;
   margin: 0;
-  font-weight: 400;
-  position: relative;
-  z-index: 1;
+  font-size: 1.1rem;
+  color: #6c757d;
+  line-height: 1.5;
 }
 
-.step-container, .dynamic-form {
-  background: white;
-  border-radius: 16px;
+/* === CONTENT SECTIONS === */
+.step-container, 
+.dynamic-form {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 63, 136, 0.1);
   padding: 2.5rem;
   margin-bottom: 2rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(0, 63, 136, 0.1);
   position: relative;
   overflow: hidden;
 }
 
-.step-container::before, .dynamic-form::before {
+.step-container::before, 
+.dynamic-form::before {
   content: '';
   position: absolute;
   top: 0;
@@ -655,6 +671,7 @@ const generateDocument = async () => {
   font-size: 1.5rem;
 }
 
+/* === TEMPLATE SELECTION === */
 .template-selection {
   position: relative;
 }
@@ -663,9 +680,10 @@ const generateDocument = async () => {
   width: 100%;
   padding: 1rem 3rem 1rem 1.5rem;
   font-size: 1.1rem;
-  border: 2px solid #e1e5e9;
+  border: 2px solid rgba(0, 63, 136, 0.1);
   border-radius: 12px;
-  background: white;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
   color: #333;
   font-weight: 500;
   transition: all 0.3s ease;
@@ -681,6 +699,7 @@ const generateDocument = async () => {
 
 .template-select:hover {
   border-color: #0056b3;
+  background: white;
 }
 
 .select-icon {
@@ -692,22 +711,25 @@ const generateDocument = async () => {
   pointer-events: none;
 }
 
+/* === LOADING STATE === */
 .loading-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 3rem;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  padding: 4rem 2rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 63, 136, 0.1);
   margin-bottom: 2rem;
 }
 
 .loading-spinner {
   width: 50px;
   height: 50px;
-  border: 4px solid #e1e5e9;
+  border: 4px solid rgba(0, 63, 136, 0.1);
   border-top: 4px solid #0056b3;
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -720,11 +742,13 @@ const generateDocument = async () => {
 }
 
 .loading-state p {
-  color: #666;
+  color: #6c757d;
   font-weight: 500;
   margin: 0;
+  font-size: 1rem;
 }
 
+/* === FORM SECTIONS === */
 .form-section {
   margin-bottom: 3rem;
 }
@@ -738,7 +762,7 @@ const generateDocument = async () => {
   font-size: 1.25rem;
   margin-bottom: 1.5rem;
   padding-bottom: 0.75rem;
-  border-bottom: 2px solid #e1e5e9;
+  border-bottom: 2px solid rgba(0, 63, 136, 0.1);
   position: relative;
 }
 
@@ -764,6 +788,7 @@ const generateDocument = async () => {
   color: #003f88;
 }
 
+/* === FORM GRID === */
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -775,6 +800,7 @@ const generateDocument = async () => {
   flex-direction: column;
 }
 
+/* === FORM INPUTS === */
 .form-label {
   display: block;
   font-weight: 600;
@@ -792,12 +818,13 @@ const generateDocument = async () => {
 .form-textarea,
 .form-select {
   padding: 0.875rem 1rem;
-  border: 2px solid #e1e5e9;
+  border: 2px solid rgba(0, 63, 136, 0.1);
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 400;
   transition: all 0.3s ease;
-  background: white;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
   color: #333;
 }
 
@@ -807,12 +834,14 @@ const generateDocument = async () => {
   border-color: #0056b3;
   box-shadow: 0 0 0 4px rgba(0, 86, 179, 0.1);
   outline: none;
+  background: white;
 }
 
 .form-input:hover,
 .form-textarea:hover,
 .form-select:hover {
   border-color: #0056b3;
+  background: white;
 }
 
 .form-textarea {
@@ -839,30 +868,39 @@ const generateDocument = async () => {
   pointer-events: none;
 }
 
+/* === DATE PICKER STYLES === */
 .date-wrapper :deep(.dp__input) {
   padding: 0.875rem 1rem !important;
-  border: 2px solid #e1e5e9 !important;
+  border: 2px solid rgba(0, 63, 136, 0.1) !important;
   border-radius: 8px !important;
   font-size: 1rem !important;
   transition: all 0.3s ease !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(10px) !important;
 }
 
 .date-wrapper :deep(.dp__input:focus) {
   border-color: #0056b3 !important;
   box-shadow: 0 0 0 4px rgba(0, 86, 179, 0.1) !important;
+  background: white !important;
 }
 
+/* === RICH TEXT EDITOR STYLES === */
 .rich-text-wrapper :deep(.ql-toolbar.ql-snow) {
-  border: 2px solid #e1e5e9;
+  border: 2px solid rgba(0, 63, 136, 0.1);
   border-bottom: none;
   border-radius: 8px 8px 0 0;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
 }
 
 .rich-text-wrapper :deep(.ql-container.ql-snow) {
-  border: 2px solid #e1e5e9;
+  border: 2px solid rgba(0, 63, 136, 0.1);
   border-top: none;
   border-radius: 0 0 8px 8px;
   min-height: 150px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
 }
 
 .rich-text-wrapper :deep(.ql-editor) {
@@ -870,16 +908,17 @@ const generateDocument = async () => {
   line-height: 1.5;
 }
 
-/* ===== PERBAIKAN UTAMA: SIGNATORY TABLE ===== */
+/* === SIGNATORY TABLE === */
 .signatory-section {
   margin-top: 1rem;
 }
 
 .signatory-table {
-  border: 2px solid #e1e5e9;
+  border: 2px solid rgba(0, 63, 136, 0.1);
   border-radius: 12px;
   overflow: hidden;
-  background: white;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   width: 100%;
   display: grid;
@@ -896,13 +935,13 @@ const generateDocument = async () => {
 .signatory-row {
   display: grid;
   grid-template-columns: var(--grid-columns);
-  border-bottom: 1px solid #e1e5e9;
+  border-bottom: 1px solid rgba(0, 63, 136, 0.1);
   transition: background-color 0.2s ease;
   min-height: 80px;
 }
 
 .signatory-row:hover {
-  background-color: #f8f9fa;
+  background-color: rgba(0, 86, 179, 0.05);
 }
 
 .signatory-row:last-child {
@@ -910,11 +949,11 @@ const generateDocument = async () => {
 }
 
 .mengetahui-row {
-  background-color: #f8f9fa;
+  background-color: rgba(248, 249, 250, 0.8);
 }
 
 .mengetahui-row:hover {
-  background-color: #e9ecef;
+  background-color: rgba(233, 236, 239, 0.8);
 }
 
 .header-item {
@@ -934,7 +973,7 @@ const generateDocument = async () => {
 
 .signatory-cell {
   padding: 1rem;
-  border-right: 1px solid #e1e5e9;
+  border-right: 1px solid rgba(0, 63, 136, 0.1);
   display: flex;
   align-items: center;
   min-height: 80px;
@@ -948,11 +987,12 @@ const generateDocument = async () => {
 .signatory-select {
   width: 100% !important;
   padding: 0.75rem !important;
-  border: 2px solid #e1e5e9 !important;
+  border: 2px solid rgba(0, 63, 136, 0.1) !important;
   border-radius: 6px !important;
   font-size: 0.9rem !important;
   transition: all 0.3s ease !important;
-  background: white !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(10px) !important;
   resize: vertical !important;
   min-height: 40px !important;
 }
@@ -962,6 +1002,7 @@ const generateDocument = async () => {
   border-color: #0056b3 !important;
   box-shadow: 0 0 0 2px rgba(0, 86, 179, 0.1) !important;
   outline: none !important;
+  background: white !important;
 }
 
 .signatory-input.readonly {
@@ -972,19 +1013,22 @@ const generateDocument = async () => {
   text-transform: capitalize !important;
 }
 
+/* === ERROR MESSAGE === */
 .error-message {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   color: #dc3545;
-  background: linear-gradient(135deg, #f8d7da 0%, #f1aeb5 100%);
-  border: 2px solid #f5c6cb;
+  background: linear-gradient(135deg, rgba(248, 215, 218, 0.8) 0%, rgba(241, 174, 181, 0.8) 100%);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(245, 198, 203, 0.5);
   padding: 1rem 1.25rem;
   border-radius: 12px;
   margin: 2rem 0;
   font-weight: 500;
 }
 
+/* === GENERATE BUTTON === */
 .generate-button {
   width: 100%;
   padding: 1.25rem 2rem;
@@ -1027,7 +1071,7 @@ const generateDocument = async () => {
 }
 
 .generate-button:disabled {
-  background: #e9ecef;
+  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
   color: #6c757d;
   cursor: not-allowed;
   box-shadow: none;
@@ -1051,18 +1095,57 @@ const generateDocument = async () => {
   animation: spin 1s linear infinite;
 }
 
-/* ===== RESPONSIVE DESIGN ===== */
-@media (max-width: 768px) {
-  .page-wrapper {
-    padding: 1rem 0.5rem;
+/* === RESPONSIVE DESIGN === */
+@media (max-width: 1024px) {
+  .generator-container {
+    padding: 0 1.5rem;
   }
 
   .header-content {
-    padding: 2rem 1.5rem;
+    padding: 1.5rem;
   }
 
-  .header-content h1 {
+  .header-text h1 {
     font-size: 2rem;
+  }
+
+  .header-text p {
+    font-size: 1rem;
+  }
+
+  .step-container,
+  .dynamic-form {
+    padding: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-wrapper {
+    padding: 1rem 0;
+  }
+
+  .generator-container {
+    padding: 0 1rem;
+  }
+
+  .header-content {
+    flex-direction: column;
+    text-align: center;
+    padding: 1.5rem;
+    gap: 1rem;
+  }
+
+  .header-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .header-text h1 {
+    font-size: 1.75rem;
+  }
+
+  .header-subtitle {
+    font-size: 1rem;
   }
 
   .step-container,
@@ -1086,11 +1169,12 @@ const generateDocument = async () => {
 
   .signatory-row {
     display: block;
-    border: 1px solid #e1e5e9;
+    border: 1px solid rgba(0, 63, 136, 0.1);
     border-radius: 8px;
     margin-bottom: 1rem;
     padding: 1rem;
-    background: white;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 
@@ -1142,18 +1226,54 @@ const generateDocument = async () => {
   }
 }
 
-@media (max-width: 480px) {
-  .header-content h1 {
-    font-size: 1.75rem;
+@media (max-width: 640px) {
+  .page-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .header-content {
+    padding: 1rem;
+  }
+
+  .header-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .header-text h1 {
+    font-size: 1.5rem;
   }
 
   .header-subtitle {
-    font-size: 1rem;
+    font-size: 0.875rem;
   }
 
   .step-container,
   .dynamic-form {
     padding: 1rem;
+  }
+
+  .loading-state {
+    padding: 3rem 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .generator-container {
+    padding: 0 0.75rem;
+  }
+
+  .header-text h1 {
+    font-size: 1.25rem;
+  }
+
+  .step-header h2 {
+    font-size: 1.25rem;
+  }
+
+  .generate-button {
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
   }
 }
 </style>
