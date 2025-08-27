@@ -1,148 +1,3 @@
-<template>
-  <div v-if="show" class="modal-overlay" @click.self="closeModal">
-    <div class="modal-content">
-      <header class="modal-header">
-        <h2>{{ modalTitle }}</h2>
-        <button @click="closeModal" class="close-button">&times;</button>
-      </header>
-
-      <div class="modal-body">
-        <!-- Tahap 1: Upload File -->
-        <div v-if="currentStep === 1">
-          <p class="instruction">
-            {{ isEditMode ? 'Pilih file template baru (.docx) untuk mengganti template yang ada, atau lewati untuk hanya mengubah metadata.' : 'Pilih file template (.docx). Sistem akan memindai placeholder di dalamnya.' }}
-          </p>
-          <div class="file-upload-wrapper">
-            <input 
-              type="file" 
-              id="file-input" 
-              @change="handleFileSelect" 
-              accept=".docx" 
-              ref="fileInputRef" 
-            />
-            <label for="file-input" :class="{ 'has-file': selectedFile }">
-              {{ selectedFile ? selectedFile.name : 'Klik untuk memilih file...' }}
-            </label>
-          </div>
-          <p v-if="error" class="error-message">{{ error }}</p>
-          <div class="modal-actions">
-            <button 
-              v-if="isEditMode" 
-              @click="skipFileUpload" 
-              class="button-secondary"
-            >
-              Lewati Upload File
-            </button>
-            <button 
-              @click="uploadAndScan" 
-              :disabled="!selectedFile || isLoading" 
-              class="button-primary"
-            >
-              {{ isLoading ? 'Memindai...' : 'Lanjut' }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Tahap 2: Definisi Metadata -->
-        <div v-if="currentStep === 2">
-          <form @submit.prevent="defineAndSave">
-            <div class="form-group-grid">
-              <div class="form-group">
-                <label for="template-name">Nama Template</label>
-                <input 
-                  type="text" 
-                  id="template-name" 
-                  v-model="templateData.templateName" 
-                  required 
-                  placeholder="Contoh: Berita Acara UAT" 
-                />
-              </div>
-              <div class="form-group">
-                <label for="template-description">Deskripsi (Opsional)</label>
-                <input 
-                  type="text" 
-                  id="template-description" 
-                  v-model="templateData.description" 
-                  placeholder="Deskripsi singkat template"
-                />
-              </div>
-            </div>
-            
-            <!-- Status Template (untuk edit mode) -->
-            <div v-if="isEditMode" class="form-group">
-              <label class="checkbox-label">
-                <input 
-                  type="checkbox" 
-                  v-model="templateData.isActive"
-                />
-                <span class="checkmark"></span>
-                Template Aktif
-              </label>
-            </div>
-            
-            <h3 class="placeholders-title">
-              {{ templateData.placeholders.length > 0 ? 'Definisi Placeholder Ditemukan' : 'Belum Ada Placeholder' }}
-            </h3>
-            
-            <div v-if="templateData.placeholders.length > 0">
-              <p class="instruction">
-                Berikan label yang mudah dibaca dan tipe data untuk setiap placeholder.
-              </p>
-              <div class="label-control-buttons">
-                <button type="button" @click="regenerateAutoLabels" class="auto-label-button primary">
-                  🔄 Regenerate Auto Labels
-                </button>
-                <button type="button" @click="clearAllLabels" class="auto-label-button danger">
-                  🗑️ Kosongkan Semua
-                </button>
-              </div>
-
-              <!-- Render grouped placeholders -->
-              <div v-for="(group, groupName) in groupedPlaceholders" :key="groupName">
-                <div v-if="group.length > 0">
-                  <h4 class="group-title">{{ groupName }}</h4>
-                  <div v-for="placeholder in group" :key="placeholder.placeholderKey" class="placeholder-item">
-                    <div class="placeholder-key">{{ placeholder.placeholderKey }}</div>
-                    <div class="placeholder-inputs">
-                      <input 
-                        type="text" 
-                        v-model="placeholder.label" 
-                        required 
-                        placeholder="Label untuk Form" 
-                        class="label-input"
-                      />
-                      <select v-model="placeholder.dataType" required>
-                        <option value="TEXT">Teks Singkat</option>
-                        <option value="TEXTAREA">Textarea (beberapa baris)</option>
-                        <option value="DATE">Tanggal</option>
-                        <option value="RICH_TEXT">Teks Panjang (HTML)</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div v-else class="empty-placeholders">
-              <p>Tidak ada placeholder yang ditemukan dalam template ini.</p>
-            </div>
-
-            <p v-if="error" class="error-message">{{ error }}</p>
-            <div class="modal-actions">
-              <button @click="goBackToStep1" type="button" class="button-secondary">
-                Kembali
-              </button>
-              <button type="submit" :disabled="isLoading" class="button-primary">
-                {{ isLoading ? 'Menyimpan...' : (isEditMode ? 'Update Template' : 'Simpan Template') }}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup>
 import { ref, computed, watch } from 'vue';
 import api from '@/services/api';
@@ -262,6 +117,7 @@ const generateAutoLabel = (placeholderKey) => {
     'jenis_request': 'Jenis Request',
     'aplikasi': 'Nama Aplikasi',
     'judul_pekerjaan': 'Judul Pekerjaan',
+    'subjudul_pekerjaan': 'Sub Judul Pekerjaan',
     'tahap': 'Tahap',
     'tahap_pengujian': 'Tahap Pengujian',
     'nomor_ba': 'Nomor Berita Acara',
@@ -302,20 +158,28 @@ const generateAutoLabel = (placeholderKey) => {
   }
   
   if (placeholderKey.startsWith('signatory.')) {
-    const signatoryPart = placeholderKey.split('.')[1];
-    const signatoryMappings = {
-      'nama': 'Nama',
-      'jabatan': 'Jabatan',
-      'perusahaan': 'Perusahaan',
-      // 'penandatangan2_nama': 'Nama Penandatangan 2',
-      // 'penandatangan2_jabatan': 'Jabatan Penandatangan 2',
-      // 'penandatangan2_instansi': 'Instansi Penandatangan 2',
-      // 'mengetahui_nama': 'Nama Yang Mengetahui',
-      // 'mengetahui_jabatan': 'Jabatan Yang Mengetahui',
-      // 'mengetahui_instansi': 'Instansi Yang Mengetahui',
-    };
+    // Pola regex untuk mengekstrak tipe (penandatangan1) dan properti (nama)
+    const match = placeholderKey.match(/signatory\.(.*?)\.(.*)/);
     
-    return signatoryMappings[signatoryPart] || capitalizeWords(signatoryPart.replace(/_/g, ' '));
+    if (match && match[1] && match[2]) {
+      const type = match[1]; // e.g., "penandatangan1" atau "mengetahui"
+      const prop = match[2]; // e.g., "nama"
+
+      // Buat label dasar dari tipe
+      let typeLabel = '';
+      if (type.includes('mengetahui')) {
+        typeLabel = 'Pihak Yang Mengetahui';
+      } else {
+        const number = type.replace('penandatangan', '');
+        typeLabel = `Penandatangan ${number}`;
+      }
+
+      // Buat label properti
+      let propLabel = prop.charAt(0).toUpperCase() + prop.slice(1); // Ubah "nama" -> "Nama"
+
+      // Gabungkan menjadi label lengkap
+      return `${propLabel} ${typeLabel}`;
+    }
   }
   
   if (labelMappings[placeholderKey]) {
@@ -423,6 +287,11 @@ const defineAndSave = async () => {
     return;
   }
 
+  // Beri tahu backend jika ada file baru yang dipilih
+  if (isEditMode.value) {
+    templateData.value.newFileUploaded = !!selectedFile.value;
+  }
+
   try {
     if (isEditMode.value) {
       // Update existing template
@@ -453,6 +322,151 @@ const showNotification = (message, type = 'info') => {
   }
 };
 </script>
+
+<template>
+  <div v-if="show" class="modal-overlay" @click.self="closeModal">
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2>{{ modalTitle }}</h2>
+        <button @click="closeModal" class="close-button">&times;</button>
+      </header>
+
+      <div class="modal-body">
+        <!-- Tahap 1: Upload File -->
+        <div v-if="currentStep === 1">
+          <p class="instruction">
+            {{ isEditMode ? 'Pilih file template baru (.docx) untuk mengganti template yang ada, atau lewati untuk hanya mengubah metadata.' : 'Pilih file template (.docx). Sistem akan memindai placeholder di dalamnya.' }}
+          </p>
+          <div class="file-upload-wrapper">
+            <input 
+              type="file" 
+              id="file-input" 
+              @change="handleFileSelect" 
+              accept=".docx" 
+              ref="fileInputRef" 
+            />
+            <label for="file-input" :class="{ 'has-file': selectedFile }">
+              {{ selectedFile ? selectedFile.name : 'Klik untuk memilih file...' }}
+            </label>
+          </div>
+          <p v-if="error" class="error-message">{{ error }}</p>
+          <div class="modal-actions">
+            <button 
+              v-if="isEditMode" 
+              @click="skipFileUpload" 
+              class="button-secondary"
+            >
+              Edit Template
+            </button>
+            <button 
+              @click="uploadAndScan" 
+              :disabled="!selectedFile || isLoading" 
+              class="button-primary"
+            >
+              {{ isLoading ? 'Memindai...' : 'Lanjut' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Tahap 2: Definisi Metadata -->
+        <div v-if="currentStep === 2">
+          <form @submit.prevent="defineAndSave">
+            <div class="form-group-grid">
+              <div class="form-group">
+                <label for="template-name">Nama Template</label>
+                <input 
+                  type="text" 
+                  id="template-name" 
+                  v-model="templateData.templateName" 
+                  required 
+                  placeholder="Contoh: Berita Acara UAT" 
+                />
+              </div>
+              <div class="form-group">
+                <label for="template-description">Deskripsi (Opsional)</label>
+                <input 
+                  type="text" 
+                  id="template-description" 
+                  v-model="templateData.description" 
+                  placeholder="Deskripsi singkat template"
+                />
+              </div>
+            </div>
+            
+            <!-- Status Template (untuk edit mode) -->
+            <div v-if="isEditMode" class="form-group">
+              <label class="checkbox-label">
+                <input 
+                  type="checkbox" 
+                  v-model="templateData.isActive"
+                />
+                <span class="checkmark"></span>
+                Template Aktif
+              </label>
+            </div>
+            
+            <h3 class="placeholders-title">
+              {{ templateData.placeholders.length > 0 ? 'Definisi Placeholder Ditemukan' : 'Belum Ada Placeholder' }}
+            </h3>
+            
+            <div v-if="templateData.placeholders.length > 0">
+              <p class="instruction">
+                Berikan label yang mudah dibaca dan tipe data untuk setiap placeholder.
+              </p>
+              <div class="label-control-buttons">
+                <button type="button" @click="regenerateAutoLabels" class="auto-label-button primary">
+                  🔄 Regenerate Auto Labels
+                </button>
+                <button type="button" @click="clearAllLabels" class="auto-label-button danger">
+                  🗑️ Kosongkan Semua
+                </button>
+              </div>
+
+              <!-- Render grouped placeholders -->
+              <div v-for="(group, groupName) in groupedPlaceholders" :key="groupName">
+                <div v-if="group.length > 0">
+                  <h4 class="group-title">{{ groupName }}</h4>
+                  <div v-for="placeholder in group" :key="placeholder.placeholderKey" class="placeholder-item">
+                    <div class="placeholder-key">{{ placeholder.placeholderKey }}</div>
+                    <div class="placeholder-inputs">
+                      <input 
+                        type="text" 
+                        v-model="placeholder.label" 
+                        required 
+                        placeholder="Label untuk Form" 
+                        class="label-input"
+                      />
+                      <select v-model="placeholder.dataType" required>
+                        <option value="TEXT">Teks Singkat</option>
+                        <option value="TEXTAREA">Textarea (beberapa baris)</option>
+                        <option value="DATE">Tanggal</option>
+                        <option value="RICH_TEXT">Teks Panjang (HTML)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div v-else class="empty-placeholders">
+              <p>Tidak ada placeholder yang ditemukan dalam template ini.</p>
+            </div>
+
+            <p v-if="error" class="error-message">{{ error }}</p>
+            <div class="modal-actions">
+              <button @click="goBackToStep1" type="button" class="button-secondary">
+                Kembali
+              </button>
+              <button type="submit" :disabled="isLoading" class="button-primary">
+                {{ isLoading ? 'Menyimpan...' : (isEditMode ? 'Update Template' : 'Simpan Template') }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
 
 <style scoped>
 /* Modal Overlay */

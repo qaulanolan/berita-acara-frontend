@@ -32,9 +32,15 @@ const openUploadModal = () => {
 };
 
 // Fungsi untuk membuka modal edit
-const openEditModal = (template) => {
-  editingTemplate.value = { ...template };
-  isModalVisible.value = true;
+const openEditModal = async (template) => {
+  // Panggil API untuk mendapatkan detail lengkap template
+    const response = await api.getTemplateById(template.id);
+    
+    // Simpan data lengkap (termasuk placeholders) ke state
+    editingTemplate.value = response.data; // response.data adalah TemplateDetailDTO
+    
+    // Baru buka modal setelah data lengkap diterima
+    isModalVisible.value = true;
 };
 
 // Fungsi untuk menutup modal
@@ -49,63 +55,63 @@ const editTemplate = (template) => {
   openEditModal(template);
 };
 
-// Fungsi untuk menghapus template dengan error handling yang lebih baik
-const confirmDelete = async (template, event) => {
-  if (confirm(`Apakah Anda yakin ingin menghapus template "${template.templateName}"? Tindakan ini tidak bisa dibatalkan.`)) {
-    try {
-      // Tambahkan loading state untuk tombol delete
-      const deleteButton = event.target;
-      const originalText = deleteButton.textContent;
-      deleteButton.disabled = true;
-      deleteButton.textContent = 'Menghapus...';
+// // Fungsi untuk menghapus template dengan error handling yang lebih baik
+// const confirmDelete = async (template, event) => {
+//   if (confirm(`Apakah Anda yakin ingin menghapus template "${template.templateName}"? Tindakan ini tidak bisa dibatalkan.`)) {
+//     try {
+//       // Tambahkan loading state untuk tombol delete
+//       const deleteButton = event.target;
+//       const originalText = deleteButton.textContent;
+//       deleteButton.disabled = true;
+//       deleteButton.textContent = 'Menghapus...';
       
-      await api.deleteTemplate(template.id);
+//       await api.deleteTemplate(template.id);
       
-      // Update UI
-      templates.value = templates.value.filter(t => t.id !== template.id);
-      showNotification('Template berhasil dihapus', 'success');
+//       // Update UI
+//       templates.value = templates.value.filter(t => t.id !== template.id);
+//       showNotification('Template berhasil dihapus', 'success');
       
-    } catch (err) {
-      console.error("Gagal menghapus template:", err);
+//     } catch (err) {
+//       console.error("Gagal menghapus template:", err);
       
-      let errorMessage = 'Gagal menghapus template';
+//       let errorMessage = 'Gagal menghapus template';
       
-      if (err.response) {
-        const status = err.response.status;
-        const serverMessage = err.response.data?.error || err.response.data?.message;
+//       if (err.response) {
+//         const status = err.response.status;
+//         const serverMessage = err.response.data?.error || err.response.data?.message;
         
-        switch (status) {
-          case 404:
-            errorMessage = 'Template tidak ditemukan';
-            break;
-          case 403:
-            errorMessage = 'Anda tidak memiliki izin untuk menghapus template ini';
-            break;
-          case 409:
-            errorMessage = 'Template sedang digunakan dan tidak dapat dihapus';
-            break;
-          case 500:
-            errorMessage = 'Terjadi kesalahan server. Silakan coba lagi nanti';
-            break;
-          default:
-            errorMessage = serverMessage || `Error ${status}: Gagal menghapus template`;
-        }
-      } else if (err.request) {
-        errorMessage = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda';
-      }
+//         switch (status) {
+//           case 404:
+//             errorMessage = 'Template tidak ditemukan';
+//             break;
+//           case 403:
+//             errorMessage = 'Anda tidak memiliki izin untuk menghapus template ini';
+//             break;
+//           case 409:
+//             errorMessage = 'Template sedang digunakan dan tidak dapat dihapus';
+//             break;
+//           case 500:
+//             errorMessage = 'Terjadi kesalahan server. Silakan coba lagi nanti';
+//             break;
+//           default:
+//             errorMessage = serverMessage || `Error ${status}: Gagal menghapus template`;
+//         }
+//       } else if (err.request) {
+//         errorMessage = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda';
+//       }
       
-      showNotification(errorMessage, 'error');
+//       showNotification(errorMessage, 'error');
       
-    } finally {
-      // Reset button state
-      const deleteButton = event.target;
-      if (deleteButton) {
-        deleteButton.disabled = false;
-        deleteButton.innerHTML = '🗑️ Hapus';
-      }
-    }
-  }
-};
+//     } finally {
+//       // Reset button state
+//       const deleteButton = event.target;
+//       if (deleteButton) {
+//         deleteButton.disabled = false;
+//         deleteButton.innerHTML = '🗑️ Hapus';
+//       }
+//     }
+//   }
+// };
 
 // Fungsi untuk menampilkan notifikasi
 const showNotification = (message, type = 'info') => {
@@ -208,9 +214,9 @@ onMounted(fetchTemplates);
                   <button @click="editTemplate(template)" class="action-button edit" title="Edit Template">
                     ✏️ Edit
                   </button>
-                  <button @click="(event) => confirmDelete(template, event)" class="action-button delete" title="Hapus Template">
+                  <!-- <button @click="(event) => confirmDelete(template, event)" class="action-button delete" title="Hapus Template">
                     🗑️ Hapus
-                  </button>
+                  </button> -->
                 </td>
               </tr>
             </tbody>
@@ -271,7 +277,7 @@ onMounted(fetchTemplates);
 .page-title {
   font-size: 1.75rem;
   font-weight: 600;
-  color: #6366f1;
+  color: #3b82f6;
   margin: 0;
 }
 
@@ -393,7 +399,7 @@ onMounted(fetchTemplates);
 }
 
 .templates-table thead {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background-color: #3b82f6;
   color: white;
 }
 

@@ -53,9 +53,15 @@ export default {
   getAdminTemplates() {
     return apiClient.get('/api/admin/templates');
   },
-  deleteTemplate(id) {
-    return apiClient.delete(`/api/admin/templates/${id}`);
+
+    // --- TAMBAHKAN FUNGSI INI ---
+  getTemplateById(id) {
+    return apiClient.get(`/api/admin/templates/${id}`);
   },
+  
+  // deleteTemplate(id) {
+  //   return apiClient.delete(`/api/admin/templates/${id}`);
+  // },
 
    // === TAMBAHAN: Endpoint untuk edit template ===
   updateTemplate(id, payload) {
@@ -63,8 +69,8 @@ export default {
   },
   
   // === TAMBAHAN: Endpoint untuk mengubah status template ===
-  updateTemplateStatus(id, statusData) {
-    return apiClient.patch(`/api/admin/templates/${id}/status`, statusData);
+  updateTemplateStatus(id, payload) {
+    return apiClient.patch(`/api/admin/templates/${id}/status`, payload);
   },
   
   // === TAMBAHAN: Endpoint untuk mendapatkan detail template ===

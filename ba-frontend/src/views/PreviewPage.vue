@@ -27,33 +27,51 @@ onMounted(async () => {
   const historyId = route.params.id; // Ambil ID dari URL, jika ada
 
   try {
-    if (historyId) {
-      // --- Alur Baru: Ambil file dari API berdasarkan ID ---
-      console.log(`Mengambil file untuk riwayat ID: ${historyId}`);
-      const response = await api.getHistoryFile(historyId);
-      blobFile.value = response.data;
-      
-      // Coba dapatkan nama file dari header
-      const contentDisposition = response.headers['content-disposition'];
-      if (contentDisposition) {
-        const match = contentDisposition.match(/filename="(.+)"/);
-        if (match && match.length === 2) fileName.value = match[1];
-      }
+    let responseFromApi = null;
 
+    if (historyId) {
+      // Alur Utama: Ambil dari API
+      console.log(`Mengambil file untuk riwayat ID: ${historyId}`);
+      responseFromApi = await api.getHistoryFile(historyId);
+      blobFile.value = responseFromApi.data;
     } else {
-      // --- Alur Lama (Fallback): Ambil dari localStorage ---
+      // Alur Fallback: Ambil dari localStorage
       console.log('Mengambil file dari localStorage.');
       const base64 = localStorage.getItem('generatedDocx');
       if (!base64) {
         error.value = "Tidak ada dokumen untuk ditampilkan.";
+        isLoading.value = false;
         return;
       }
       blobFile.value = base64ToBlob(base64);
-      // Hapus dari localStorage setelah digunakan agar tidak muncul lagi
+      
+      // --- PERBAIKAN: Buat nama file dari metadata localStorage ---
+      const jenisBA = localStorage.getItem('generatedDocxJenisBA') || 'BeritaAcara';
+      const judulBA = localStorage.getItem('generatedDocxJudulBA') || 'Dokumen';
+      // Ganti karakter tidak valid di nama file
+      const safeJenis = jenisBA.replace(/[<>:"/\\|?*]/g, '_');
+      const safeJudul = judulBA.replace(/[<>:"/\\|?*]/g, '_');
+      fileName.value = `BA-${safeJenis}-${safeJudul}.docx`;
+      // ----------------------------------------------------------
+
+      // Hapus semua item dari localStorage setelah digunakan
       localStorage.removeItem('generatedDocx');
+      localStorage.removeItem('generatedDocxJenisBA');
+      localStorage.removeItem('generatedDocxJudulBA');
     }
 
-    // Render dokumen yang sudah didapatkan
+    // Ekstrak nama file dari header jika sumbernya dari API
+    if (responseFromApi) {
+      const contentDisposition = responseFromApi.headers['content-disposition'];
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+?)"/);
+        if (match && match.length > 1) {
+          fileName.value = match[1];
+        }
+      }
+    }
+
+    // Render dokumen
     if (blobFile.value) {
       await renderAsync(blobFile.value, docxContainer.value);
     }
